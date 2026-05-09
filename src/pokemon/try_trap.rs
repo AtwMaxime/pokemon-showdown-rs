@@ -1,0 +1,49 @@
+use crate::*;
+
+impl Pokemon {
+
+    /// Try to trap the Pokemon
+    //
+    // 	tryTrap(isHidden = false) {
+    // 		if (!this.runStatusImmunity('trapped')) return false;
+    // 		if (this.trapped && isHidden) return true;
+    // 		this.trapped = isHidden ? 'hidden' : true;
+    // 		return true;
+    // 	}
+    //
+    pub fn try_trap(battle: &mut Battle, pokemon_pos: (usize, usize), is_hidden: bool) -> bool {
+        // JS: if (!this.runStatusImmunity('trapped')) return false;
+        let can_be_trapped = Pokemon::run_status_immunity(battle, pokemon_pos, "trapped", false);
+
+        if !can_be_trapped {
+            return false;
+        }
+
+        // JS: if (this.trapped && isHidden) return true;
+        let already_trapped = {
+            let pokemon = match battle.pokemon_at(pokemon_pos.0, pokemon_pos.1) {
+                Some(p) => p,
+                None => return false,
+            };
+            pokemon.trapped.is_trapped()
+        };
+
+        if already_trapped && is_hidden {
+            return true;
+        }
+
+        // JS: this.trapped = isHidden ? 'hidden' : true;
+        let pokemon_mut = match battle.pokemon_at_mut(pokemon_pos.0, pokemon_pos.1) {
+            Some(p) => p,
+            None => return false,
+        };
+        pokemon_mut.trapped = if is_hidden {
+            TrappedState::Hidden
+        } else {
+            TrappedState::Visible
+        };
+
+        // JS: return true;
+        true
+    }
+}

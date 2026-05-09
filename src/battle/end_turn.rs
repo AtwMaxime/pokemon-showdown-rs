@@ -1,0 +1,937 @@
+use crate::*;
+use crate::event::EventResult;
+use crate::battle::BattleRequestState;
+
+impl Battle {
+
+    // =========================================================================
+    // Turn Management Methods (ported from battle.ts)
+    // =========================================================================
+
+    /// End the current turn
+    /// Equivalent to battle.ts endTurn() (battle.ts:1577-1754)
+    ///
+    //
+    // 	endTurn() {
+    // 		this.turn++;
+    // 		this.lastSuccessfulMoveThisTurn = null;
+    //
+    // 		const dynamaxEnding: Pokemon[] = [];
+    // 		for (const pokemon of this.getAllActive()) {
+    // 			if (pokemon.volatiles['dynamax']?.turns === 3) {
+    // 				dynamaxEnding.push(pokemon);
+    // 			}
+    // 		}
+    // 		if (dynamaxEnding.length > 1) {
+    // 			this.updateSpeed();
+    // 			this.speedSort(dynamaxEnding);
+    // 		}
+    // 		for (const pokemon of dynamaxEnding) {
+    // 			pokemon.removeVolatile('dynamax');
+    // 		}
+    //
+    // 		// Gen 1 partial trapping ends when either Pokemon or a switch in faints to residual damage
+    // 		if (this.gen === 1) {
+    // 			for (const pokemon of this.getAllActive()) {
+    // 				if (pokemon.volatiles['partialtrappinglock']) {
+    // 					const target = pokemon.volatiles['partialtrappinglock'].locked;
+    // 					if (target.hp <= 0 || !target.volatiles['partiallytrapped']) {
+    // 						delete pokemon.volatiles['partialtrappinglock'];
+    // 					}
+    // 				}
+    // 				if (pokemon.volatiles['partiallytrapped']) {
+    // 					const source = pokemon.volatiles['partiallytrapped'].source;
+    // 					if (source.hp <= 0 || !source.volatiles['partialtrappinglock']) {
+    // 						delete pokemon.volatiles['partiallytrapped'];
+    // 					}
+    // 				}
+    // 				if (pokemon.volatiles['fakepartiallytrapped']) {
+    // 					const counterpart = pokemon.volatiles['fakepartiallytrapped'].counterpart;
+    // 					if (counterpart.hp <= 0 || !counterpart.volatiles['fakepartiallytrapped']) {
+    // 						delete pokemon.volatiles['fakepartiallytrapped'];
+    // 					}
+    // 				}
+    // 			}
+    // 		}
+    //
+    // 		const trappedBySide: boolean[] = [];
+    // 		const stalenessBySide: ('internal' | 'external' | undefined)[] = [];
+    // 		for (const side of this.sides) {
+    // 			let sideTrapped = true;
+    // 			let sideStaleness: 'internal' | 'external' | undefined;
+    // 			for (const pokemon of side.active) {
+    // 				if (!pokemon) continue;
+    // 				pokemon.moveThisTurn = '';
+    // 				pokemon.newlySwitched = false;
+    // 				pokemon.moveLastTurnResult = pokemon.moveThisTurnResult;
+    // 				pokemon.moveThisTurnResult = undefined;
+    // 				if (this.turn !== 1) {
+    // 					pokemon.usedItemThisTurn = false;
+    // 					pokemon.statsRaisedThisTurn = false;
+    // 					pokemon.statsLoweredThisTurn = false;
+    // 					// It shouldn't be possible in a normal battle for a Pokemon to be damaged before turn 1's move selection
+    // 					// However, this could be potentially relevant in certain OMs
+    // 					pokemon.hurtThisTurn = null;
+    // 				}
+    //
+    // 				pokemon.maybeDisabled = false;
+    // 				pokemon.maybeLocked = false;
+    // 				for (const moveSlot of pokemon.moveSlots) {
+    // 					moveSlot.disabled = false;
+    // 					moveSlot.disabledSource = '';
+    // 				}
+    // 				this.runEvent('DisableMove', pokemon);
+    // 				for (const moveSlot of pokemon.moveSlots) {
+    // 					const activeMove = this.dex.getActiveMove(moveSlot.id);
+    // 					this.singleEvent('DisableMove', activeMove, null, pokemon);
+    // 					if (activeMove.flags['cantusetwice'] && pokemon.lastMove?.id === moveSlot.id) {
+    // 						pokemon.disableMove(pokemon.lastMove.id);
+    // 					}
+    // 				}
+    //
+    // 				// If it was an illusion, it's not any more
+    // 				if (pokemon.getLastAttackedBy() && this.gen >= 7) pokemon.knownType = true;
+    //
+    // 				for (let i = pokemon.attackedBy.length - 1; i >= 0; i--) {
+    // 					const attack = pokemon.attackedBy[i];
+    // 					if (attack.source.isActive) {
+    // 						attack.thisTurn = false;
+    // 					} else {
+    // 						pokemon.attackedBy.splice(pokemon.attackedBy.indexOf(attack), 1);
+    // 					}
+    // 				}
+    //
+    // 				if (this.gen >= 7 && !pokemon.terastallized) {
+    // 					// In Gen 7, the real type of every Pokemon is visible to all players via the bottom screen while making choices
+    // 					const seenPokemon = pokemon.illusion || pokemon;
+    // 					const realTypeString = seenPokemon.getTypes(true).join('/');
+    // 					if (realTypeString !== seenPokemon.apparentType) {
+    // 						this.add('-start', pokemon, 'typechange', realTypeString, '[silent]');
+    // 						seenPokemon.apparentType = realTypeString;
+    // 						if (pokemon.addedType) {
+    // 							// The typechange message removes the added type, so put it back
+    // 							this.add('-start', pokemon, 'typeadd', pokemon.addedType, '[silent]');
+    // 						}
+    // 					}
+    // 				}
+    //
+    // 				pokemon.trapped = pokemon.maybeTrapped = false;
+    // 				this.runEvent('TrapPokemon', pokemon);
+    // 				if (!pokemon.knownType || this.dex.getImmunity('trapped', pokemon)) {
+    // 					this.runEvent('MaybeTrapPokemon', pokemon);
+    // 				}
+    // 				// canceling switches would leak information
+    // 				// if a foe might have a trapping ability
+    // 				if (this.gen > 2) {
+    // 					for (const source of pokemon.foes()) {
+    // 						const species = (source.illusion || source).species;
+    // 						if (!species.abilities) continue;
+    // 						for (const abilitySlot in species.abilities) {
+    // 							const abilityName = species.abilities[abilitySlot as keyof Species['abilities']];
+    // 							if (abilityName === source.ability) {
+    // 								// pokemon event was already run above so we don't need
+    // 								// to run it again.
+    // 								continue;
+    // 							}
+    // 							const ruleTable = this.ruleTable;
+    // 							if ((ruleTable.has('+hackmons') || !ruleTable.has('obtainableabilities')) && !this.format.team) {
+    // 								// hackmons format
+    // 								continue;
+    // 							} else if (abilitySlot === 'H' && species.unreleasedHidden) {
+    // 								// unreleased hidden ability
+    // 								continue;
+    // 							}
+    // 							const ability = this.dex.abilities.get(abilityName);
+    // 							if (ruleTable.has('-ability:' + ability.id)) continue;
+    // 							if (pokemon.knownType && !this.dex.getImmunity('trapped', pokemon)) continue;
+    // 							this.singleEvent('FoeMaybeTrapPokemon', ability, {}, pokemon, source);
+    // 						}
+    // 					}
+    // 				}
+    //
+    // 				if (pokemon.fainted) continue;
+    //
+    // 				sideTrapped = sideTrapped && pokemon.trapped;
+    // 				const staleness = pokemon.volatileStaleness || pokemon.staleness;
+    // 				if (staleness) sideStaleness = sideStaleness === 'external' ? sideStaleness : staleness;
+    // 				pokemon.activeTurns++;
+    // 			}
+    // 			trappedBySide.push(sideTrapped);
+    // 			stalenessBySide.push(sideStaleness);
+    // 			side.faintedLastTurn = side.faintedThisTurn;
+    // 			side.faintedThisTurn = null;
+    // 		}
+    //
+    // 		if (this.maybeTriggerEndlessBattleClause(trappedBySide, stalenessBySide)) return;
+    //
+    // 		if (this.gameType === 'triples' && this.sides.every(side => side.pokemonLeft === 1)) {
+    // 			// If both sides have one Pokemon left in triples and they are not adjacent, they are both moved to the center.
+    // 			const actives = this.getAllActive();
+    // 			if (actives.length > 1 && !actives[0].isAdjacent(actives[1])) {
+    // 				this.swapPosition(actives[0], 1, '[silent]');
+    // 				this.swapPosition(actives[1], 1, '[silent]');
+    // 				this.add('-center');
+    // 			}
+    // 		}
+    //
+    // 		this.add('turn', this.turn);
+    // 		if (this.gameType === 'multi') {
+    // 			for (const side of this.sides) {
+    // 				if (side.canDynamaxNow()) {
+    // 					if (this.turn === 1) {
+    // 						this.addSplit(side.id, ['-candynamax', side.id]);
+    // 					} else {
+    // 						this.add('-candynamax', side.id);
+    // 					}
+    // 				}
+    // 			}
+    // 		}
+    // 		if (this.gen === 2) this.quickClawRoll = this.randomChance(60, 256);
+    // 		if (this.gen === 3) this.quickClawRoll = this.randomChance(1, 5);
+    //
+    // 		this.makeRequest('move');
+    // 	}
+    //
+    pub fn end_turn(&mut self) {
+        self.turn += 1;
+
+        // JS: this.lastSuccessfulMoveThisTurn = null;
+        self.last_successful_move_this_turn = None;
+
+        // Dynamax 3-turn removal
+        // JS: const dynamaxEnding: Pokemon[] = [];
+        // JS: for (const pokemon of this.getAllActive()) {
+        // JS:     if (pokemon.volatiles['dynamax']?.turns === 3) {
+        // JS:         dynamaxEnding.push(pokemon);
+        // JS:     }
+        // JS: }
+        let dynamax_id = ID::new("dynamax");
+        let mut dynamax_ending: Vec<(usize, usize)> = Vec::new();
+
+        for side_idx in 0..self.sides.len() {
+            for active_idx in 0..self.sides[side_idx].active.len() {
+                if let Some(Some(poke_idx)) = self.sides[side_idx].active.get(active_idx) {
+                    if let Some(pokemon) = self.sides[side_idx].pokemon.get(*poke_idx) {
+                        // Check if Pokemon has dynamax volatile with turns === 3
+                        if let Some(dynamax_state) = pokemon.volatiles.get(&dynamax_id) {
+                            let turns = dynamax_state.borrow().turns.unwrap_or(0);
+                            if turns == 3 {
+                                dynamax_ending.push((side_idx, *poke_idx));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // JS: if (dynamaxEnding.length > 1) {
+        // JS:     this.updateSpeed();
+        // JS:     this.speedSort(dynamaxEnding);
+        // JS: }
+        if dynamax_ending.len() > 1 {
+            // JS: this.updateSpeed() - updates ALL pokemon, not just dynamax ending ones
+            self.update_speed();
+
+            // Speed sort the Pokemon ending Dynamax
+            dynamax_ending.sort_by(|&(side_a, poke_a), &(side_b, poke_b)| {
+                let speed_a = self
+                    .sides
+                    .get(side_a)
+                    .and_then(|s| s.pokemon.get(poke_a))
+                    .map(|p| p.speed)
+                    .unwrap_or(0);
+                let speed_b = self
+                    .sides
+                    .get(side_b)
+                    .and_then(|s| s.pokemon.get(poke_b))
+                    .map(|p| p.speed)
+                    .unwrap_or(0);
+                speed_b.cmp(&speed_a) // Higher speed first
+            });
+        }
+
+        // JS: for (const pokemon of dynamaxEnding) {
+        // JS:     pokemon.removeVolatile('dynamax');
+        // JS: }
+        for (side_idx, poke_idx) in dynamax_ending {
+            if let Some(pokemon) = self
+                .sides
+                .get_mut(side_idx)
+                .and_then(|s| s.pokemon.get_mut(poke_idx))
+            {
+                pokemon.volatiles.remove(&dynamax_id);
+            }
+        }
+
+        // Gen 1 partial trapping cleanup
+        // JS: if (this.gen === 1) { ... }
+        if self.gen == 1 {
+            let partialtrappinglock_id = ID::new("partialtrappinglock");
+            let partiallytrapped_id = ID::new("partiallytrapped");
+            let fakepartiallytrapped_id = ID::new("fakepartiallytrapped");
+
+            // Collect which volatiles need to be removed (to avoid borrow checker issues)
+            let mut volatiles_to_remove: Vec<((usize, usize), ID)> = Vec::new();
+
+            for side_idx in 0..self.sides.len() {
+                for active_idx in 0..self.sides[side_idx].active.len() {
+                    if let Some(Some(poke_idx)) = self.sides[side_idx].active.get(active_idx) {
+                        let pos = (side_idx, *poke_idx);
+
+                        // Check partialtrappinglock
+                        if let Some(pokemon) = self.sides[side_idx].pokemon.get(*poke_idx) {
+                            if let Some(lock_state) = pokemon.volatiles.get(&partialtrappinglock_id)
+                            {
+                                // JS: const target = pokemon.volatiles['partialtrappinglock'].locked;
+                                // The locked target is stored in the volatile's locked_target field
+                                // Note: In JS, `locked` refers to the Pokemon object
+                                // In Rust, we use locked_target to store the Pokemon position
+                                let should_remove =
+                                    if let Some(target_pos) = lock_state.borrow().locked_target {
+                                        // JS: if (target.hp <= 0 || !target.volatiles['partiallytrapped'])
+                                        if let Some(target) = self
+                                            .sides
+                                            .get(target_pos.0)
+                                            .and_then(|s| s.pokemon.get(target_pos.1))
+                                        {
+                                            target.hp <= 0
+                                                || !target
+                                                    .volatiles
+                                                    .contains_key(&partiallytrapped_id)
+                                        } else {
+                                            true // Target doesn't exist, remove
+                                        }
+                                    } else {
+                                        true // No locked target, remove
+                                    };
+
+                                if should_remove {
+                                    volatiles_to_remove.push((pos, partialtrappinglock_id.clone()));
+                                }
+                            }
+
+                            // Check partiallytrapped
+                            if let Some(trapped_state) = pokemon.volatiles.get(&partiallytrapped_id)
+                            {
+                                // JS: const source = pokemon.volatiles['partiallytrapped'].source;
+                                // Use the typed source field from EffectState
+                                let should_remove = if let Some((source_side, source_poke)) = trapped_state.borrow().source {
+                                    // JS: if (source.hp <= 0 || !source.volatiles['partialtrappinglock'])
+                                    if let Some(source) = self
+                                        .sides
+                                        .get(source_side)
+                                        .and_then(|s| s.pokemon.get(source_poke))
+                                    {
+                                        source.hp <= 0
+                                            || !source
+                                                .volatiles
+                                                .contains_key(&partialtrappinglock_id)
+                                    } else {
+                                        true // Source doesn't exist, remove
+                                    }
+                                } else {
+                                    true // No source data, remove
+                                };
+
+                                if should_remove {
+                                    volatiles_to_remove.push((pos, partiallytrapped_id.clone()));
+                                }
+                            }
+
+                            // Check fakepartiallytrapped
+                            if let Some(fake_state) =
+                                pokemon.volatiles.get(&fakepartiallytrapped_id)
+                            {
+                                // JS: const counterpart = pokemon.volatiles['fakepartiallytrapped'].counterpart;
+                                // Use the typed counterpart field from EffectState
+                                let should_remove = if let Some((counterpart_side, counterpart_poke)) = fake_state.borrow().counterpart {
+                                    // JS: if (counterpart.hp <= 0 || !counterpart.volatiles['fakepartiallytrapped'])
+                                    if let Some(counterpart) = self
+                                        .sides
+                                        .get(counterpart_side)
+                                        .and_then(|s| s.pokemon.get(counterpart_poke))
+                                    {
+                                        counterpart.hp <= 0
+                                            || !counterpart
+                                                .volatiles
+                                                .contains_key(&fakepartiallytrapped_id)
+                                    } else {
+                                        true // Counterpart doesn't exist, remove
+                                    }
+                                } else {
+                                    true // No counterpart data, remove
+                                };
+
+                                if should_remove {
+                                    volatiles_to_remove
+                                        .push((pos, fakepartiallytrapped_id.clone()));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Remove the volatiles
+            for ((side_idx, poke_idx), volatile_id) in volatiles_to_remove {
+                if let Some(pokemon) = self
+                    .sides
+                    .get_mut(side_idx)
+                    .and_then(|s| s.pokemon.get_mut(poke_idx))
+                {
+                    pokemon.volatiles.remove(&volatile_id);
+                }
+            }
+        }
+
+        // Collect pokemon positions and move slots for DisableMove events (to avoid borrow checker issues)
+        let mut pokemon_positions: Vec<(usize, usize)> = Vec::new();
+        let mut disable_move_data: Vec<((usize, usize), ID)> = Vec::new();
+
+        // Collect type change messages to execute after the loop (to avoid borrow checker issues)
+        // JavaScript: added_type is string, not Option<String>
+        let mut type_change_messages: Vec<(String, String, String, (usize, usize))> = Vec::new(); // (target_slot, real_type, added_type, seen_pokemon_pos)
+
+        // Collect attackedBy updates to process after the loop (to avoid borrow checker issues)
+        let mut attacked_by_updates: Vec<(usize, usize)> = Vec::new(); // (side_idx, poke_idx)
+
+        // Track trapped and staleness status per side
+        let mut trapped_by_side: Vec<bool> = Vec::new();
+        let mut staleness_by_side: Vec<Option<String>> = Vec::new();
+
+        // Reset Pokemon turn-specific fields
+        for (side_idx, side) in self.sides.iter_mut().enumerate() {
+            let mut side_trapped = true;
+            let mut side_staleness: Option<String> = None;
+
+            for (poke_idx, pokemon) in side.pokemon.iter_mut().enumerate() {
+                debug_elog!("[END_TURN] Checking Pokemon {} (array_idx {}, side {}), is_active={}, fainted={}",
+                    pokemon.set.species, poke_idx, side_idx, pokemon.is_active, pokemon.fainted);
+
+                if !pokemon.is_active {
+                    continue;
+                }
+
+                debug_elog!("[END_TURN] Processing active Pokemon {} for DisableMove", pokemon.set.species);
+
+                // JS: pokemon.moveThisTurn = '';
+                pokemon.move_this_turn = None;
+
+                // JS: pokemon.newlySwitched = false;
+                pokemon.newly_switched = false;
+
+                // JS: pokemon.moveLastTurnResult = pokemon.moveThisTurnResult;
+                // JS: pokemon.moveThisTurnResult = undefined;
+                pokemon.move_last_turn_result = pokemon.move_this_turn_result;
+                pokemon.move_this_turn_result = crate::battle_actions::MoveResult::Undefined;
+
+                if self.turn != 1 {
+                    // JS: pokemon.usedItemThisTurn = false;
+                    pokemon.used_item_this_turn = false;
+
+                    // JS: pokemon.statsRaisedThisTurn = false;
+                    pokemon.stats_raised_this_turn = false;
+
+                    // JS: pokemon.statsLoweredThisTurn = false;
+                    pokemon.stats_lowered_this_turn = false;
+
+                    // JS: pokemon.hurtThisTurn = null;
+                    pokemon.hurt_this_turn = None;
+                }
+
+                // JS: pokemon.maybeDisabled = false;
+                pokemon.maybe_disabled = false;
+
+                // JS: pokemon.maybeLocked = false;
+                pokemon.maybe_locked = Some(false);
+
+                // JS: for (const moveSlot of pokemon.moveSlots) { moveSlot.disabled = false; moveSlot.disabledSource = ''; }
+                for move_slot in &mut pokemon.move_slots {
+                    move_slot.disabled = false;
+                    move_slot.disabled_source = None;
+                }
+
+                // Collect pokemon position for DisableMove event
+                // IMPORTANT: Use (side_idx, poke_idx) not (pokemon.side_index, pokemon.position)
+                // because pokemon.position can change during switches!
+                let pokemon_pos = (side_idx, poke_idx);
+                pokemon_positions.push(pokemon_pos);
+
+                // Collect move slot data for later single_event calls
+                for move_slot in &pokemon.move_slots {
+                    disable_move_data.push((pokemon_pos, move_slot.id.clone()));
+                }
+
+                // JS: if (pokemon.getLastAttackedBy() && this.gen >= 7) pokemon.knownType = true;
+                if self.gen >= 7 && pokemon.get_last_attacked_by().is_some() {
+                    pokemon.known_type = true;
+                }
+
+                // JS: for (let i = pokemon.attackedBy.length - 1; i >= 0; i--) {
+                // JS:     const attack = pokemon.attackedBy[i];
+                // JS:     if (attack.source.isActive) {
+                // JS:         attack.thisTurn = false;
+                // JS:     } else {
+                // JS:         pokemon.attackedBy.splice(pokemon.attackedBy.indexOf(attack), 1);
+                // JS:     }
+                // JS: }
+                // Collect for processing after the loop (to avoid borrow checker issues)
+                // Use pokemon_pos which is already (side_idx, poke_idx)
+                if !pokemon.attacked_by.is_empty() {
+                    attacked_by_updates.push(pokemon_pos);
+                }
+
+                // JS: if (this.gen >= 7 && !pokemon.terastallized) {
+                // Gen 7+ type reveal logic
+                if self.gen >= 7 && pokemon.terastallized.is_none() {
+                    // JS: const seenPokemon = pokemon.illusion || pokemon;
+                    let seen_pokemon_pos = if let Some(illusion_idx) = pokemon.illusion {
+                        (pokemon_pos.0, illusion_idx)
+                    } else {
+                        pokemon_pos
+                    };
+
+                    // If seen pokemon is the current pokemon (no illusion), we can check directly
+                    if seen_pokemon_pos == pokemon_pos {
+                        // Get real type string from current pokemon
+                        let real_type_string = pokemon.types.join("/");
+                        // JavaScript: apparentType is string, check if it differs
+                        let apparent_type_changed = pokemon.apparent_type != real_type_string;
+
+                        if apparent_type_changed && !real_type_string.is_empty() {
+                            // Collect for later to avoid borrow checker issues with self.add()
+                            let target_arg = pokemon.get_slot();
+                            let added_type_opt = pokemon.added_type.clone();
+                            type_change_messages.push((target_arg, real_type_string, added_type_opt, seen_pokemon_pos));
+                        }
+                    } else {
+                        // Different pokemon (illusion) - need to collect for later processing
+                        // We can't access the illusion target here without conflicting borrows
+                        // So we'll collect the data and process it after the loop
+                        let target_arg = pokemon.get_slot();
+                        let added_type_opt = pokemon.added_type.clone();
+                        // Mark with empty string to indicate we need to fetch real_type later
+                        type_change_messages.push((target_arg, String::new(), added_type_opt, seen_pokemon_pos));
+                    }
+                }
+
+                // JS: pokemon.trapped = pokemon.maybeTrapped = false;
+                pokemon.trapped = TrappedState::None;
+                pokemon.maybe_trapped = false;
+
+                // JS: pokemon.activeTurns++;
+                pokemon.active_turns += 1;
+
+                // JS: if (pokemon.fainted) continue;
+                if pokemon.fainted {
+                    continue;
+                }
+
+                // JS: sideTrapped = sideTrapped && pokemon.trapped;
+                side_trapped = side_trapped && pokemon.trapped.is_trapped();
+
+                // JS: const staleness = pokemon.volatileStaleness || pokemon.staleness;
+                // JS: if (staleness) sideStaleness = sideStaleness === 'external' ? sideStaleness : staleness;
+                let staleness = pokemon.volatile_staleness.clone().or(pokemon.staleness.clone());
+                if let Some(s) = staleness {
+                    side_staleness = if side_staleness.as_deref() == Some("external") {
+                        side_staleness
+                    } else {
+                        Some(s)
+                    };
+                }
+            }
+
+            // JS: trappedBySide.push(sideTrapped);
+            // JS: stalenessBySide.push(sideStaleness);
+            trapped_by_side.push(side_trapped);
+            staleness_by_side.push(side_staleness);
+
+            // JS: side.faintedLastTurn = side.faintedThisTurn;
+            // JS: side.faintedThisTurn = null;
+            side.fainted_last_turn = side.fainted_this_turn;
+            side.fainted_this_turn = None;
+        }
+
+        // Process attackedBy arrays (after the mutable borrow of sides ends)
+        for (side_idx, poke_idx) in attacked_by_updates {
+            // First pass: collect which indices should be removed vs marked (immutable borrows)
+            let mut indices_to_remove: Vec<usize> = Vec::new();
+            let mut indices_to_mark: Vec<usize> = Vec::new();
+
+            if let Some(pokemon) = self.sides.get(side_idx)
+                .and_then(|s| s.pokemon.get(poke_idx))
+            {
+                for (i, attack) in pokemon.attacked_by.iter().enumerate() {
+                    let source_pos = attack.source;
+
+                    // Check if source is still active
+                    let source_is_active = if let Some(source_pokemon) = self.sides.get(source_pos.0)
+                        .and_then(|s| s.pokemon.get(source_pos.1))
+                    {
+                        source_pokemon.is_active
+                    } else {
+                        false
+                    };
+
+                    if source_is_active {
+                        indices_to_mark.push(i);
+                    } else {
+                        indices_to_remove.push(i);
+                    }
+                }
+            }
+
+            // Second pass: apply the changes (mutable borrow)
+            if let Some(pokemon) = self.sides.get_mut(side_idx)
+                .and_then(|s| s.pokemon.get_mut(poke_idx))
+            {
+                // Mark as not this turn
+                for i in indices_to_mark {
+                    pokemon.attacked_by[i].this_turn = false;
+                }
+
+                // Remove inactive sources (in reverse order to maintain indices)
+                for i in indices_to_remove.iter().rev() {
+                    pokemon.attacked_by.remove(*i);
+                }
+            }
+        }
+
+        // Process collected type change messages (after the mutable borrow of sides ends)
+        for (target_slot, mut real_type, added_type_opt, seen_pokemon_pos) in type_change_messages {
+            // If real_type is empty, we need to fetch it from the seen_pokemon (illusion case)
+            if real_type.is_empty() {
+                if let Some(seen_pokemon) = self.sides.get(seen_pokemon_pos.0)
+                    .and_then(|s| s.pokemon.get(seen_pokemon_pos.1))
+                {
+                    real_type = seen_pokemon.types.join("/");
+
+                    // Check if type changed
+                    // JavaScript: apparentType is string, check if it differs
+                    let apparent_type_changed = seen_pokemon.apparent_type != real_type;
+                    if !apparent_type_changed || real_type.is_empty() {
+                        continue; // Skip if no change or empty type
+                    }
+                } else {
+                    continue; // Skip if pokemon not found
+                }
+            }
+
+            // JS: this.add('-start', pokemon, 'typechange', realTypeString, '[silent]');
+            self.add("-start", &[
+                target_slot.as_str().into(),
+                "typechange".into(),
+                real_type.clone().into(),
+                "[silent]".into()
+            ]);
+
+            // JS: seenPokemon.apparentType = realTypeString;
+            if let Some(seen_pokemon_mut) = self.sides.get_mut(seen_pokemon_pos.0)
+                .and_then(|s| s.pokemon.get_mut(seen_pokemon_pos.1))
+            {
+                // JavaScript: this.apparentType = realTypeString;
+                seen_pokemon_mut.apparent_type = real_type;
+            }
+
+            // JS: if (pokemon.addedType) { this.add('-start', pokemon, 'typeadd', pokemon.addedType, '[silent]'); }
+            // JavaScript: addedType is string, check if not empty
+            if !added_type_opt.is_empty() {
+                self.add("-start", &[
+                    target_slot.as_str().into(),
+                    "typeadd".into(),
+                    added_type_opt.as_str().into(),
+                    "[silent]".into()
+                ]);
+            }
+        }
+
+        // Call runEvent('DisableMove') for each active pokemon (after the mutable borrow ends)
+        // JS: this.runEvent('DisableMove', pokemon);
+        // This allows abilities like Assault Vest, Gorilla Tactics, etc. to disable moves
+        for pokemon_pos in &pokemon_positions {
+            self.run_event("DisableMove", Some(crate::event::EventTarget::Pokemon(*pokemon_pos)), None, None, EventResult::Continue, false, false);
+        }
+
+        // Call singleEvent('DisableMove') for each move (allows move-specific disable logic)
+        // JS: for (const moveSlot of pokemon.moveSlots) { this.singleEvent('DisableMove', activeMove, null, pokemon); }
+        for (pokemon_pos, move_id) in disable_move_data {
+            let move_effect = self.make_move_effect(&move_id);
+            self.single_event("DisableMove", &move_effect, None, Some(pokemon_pos), None, None, None);
+
+            // JS: if (activeMove.flags['cantusetwice'] && pokemon.lastMove?.id === moveSlot.id) {
+            // JS:     pokemon.disableMove(pokemon.lastMove.id);
+            // JS: }
+            // Check if move has cantusetwice flag and was last move used
+            if let Some(move_def) = self.dex.moves().get_by_id(&move_id) {
+                if move_def.flags.contains_key("cantusetwice") {
+                    // Check if this was the last move used
+                    if let Some(pokemon) = self.sides.get(pokemon_pos.0)
+                        .and_then(|s| s.pokemon.get(pokemon_pos.1))
+                    {
+                        if let Some(ref last_move) = pokemon.last_move {
+                            if last_move == &move_id {
+                                // Disable this move
+                                if let Some(pokemon_mut) = self.sides.get_mut(pokemon_pos.0)
+                                    .and_then(|s| s.pokemon.get_mut(pokemon_pos.1))
+                                {
+                                    // Find and disable the move slot
+                                    for slot in &mut pokemon_mut.move_slots {
+                                        if slot.id == move_id {
+                                            slot.disabled = true;
+                                            slot.disabled_source = Some("cantusetwice".to_string());
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Call TrapPokemon and MaybeTrapPokemon events for each active pokemon
+        // JS: this.runEvent('TrapPokemon', pokemon);
+        // JS: if (!pokemon.knownType || this.dex.getImmunity('trapped', pokemon)) { this.runEvent('MaybeTrapPokemon', pokemon); }
+        for &pokemon_pos in &pokemon_positions {
+            // TrapPokemon event - allows moves/abilities to trap pokemon (e.g., Mean Look)
+            self.run_event("TrapPokemon", Some(crate::event::EventTarget::Pokemon(pokemon_pos)), None, None, EventResult::Continue, false, false);
+
+            // MaybeTrapPokemon event - conditional trapping based on type immunity
+            // JS: if (!pokemon.knownType || this.dex.getImmunity('trapped', pokemon))
+            // NOTE: Must use dex.get_immunity() here, NOT run_status_immunity()
+            // JavaScript uses dex.getImmunity() which is a simple lookup, not runEvent('Immunity')
+            let should_run_maybe_trap = {
+                let pokemon = &self.sides[pokemon_pos.0].pokemon[pokemon_pos.1];
+                let pokemon_types = pokemon.get_types(self, false);
+                // Run if type is not known OR if not immune to trapped status
+                !pokemon.known_type || self.dex.get_immunity("trapped", &pokemon_types)
+            };
+
+            if should_run_maybe_trap {
+                self.run_event("MaybeTrapPokemon", Some(crate::event::EventTarget::Pokemon(pokemon_pos)), None, None, EventResult::Continue, false, false);
+            }
+        }
+
+        // Check for foe abilities that might trap pokemon (Gen 3+)
+        // JS: for (const source of pokemon.foes()) { ... check species.abilities ... }
+        if self.gen >= 3 {
+            for &(side_idx, poke_idx) in &pokemon_positions {
+                let pokemon_pos = (side_idx, poke_idx);
+
+                // Get adjacent foes for this pokemon
+                let foes = if let Some(pokemon) = self.sides.get(side_idx)
+                    .and_then(|s| s.pokemon.get(poke_idx))
+                {
+                    pokemon.adjacent_foes(self)
+                } else {
+                    Vec::new()
+                };
+
+                // JS: for (const source of pokemon.foes())
+                for (foe_side_idx, foe_idx) in foes {
+                    let foe_pos = (foe_side_idx, foe_idx);
+
+                    // JS: const species = (source.illusion || source).species;
+                    // Get the species (illusion species if active, otherwise real species)
+                    let (species_id, current_ability, has_abilities) = {
+                        let foe = &self.sides[foe_side_idx].pokemon[foe_idx];
+                        // Illusion is Option<usize> - index of pokemon providing illusion
+                        let species_to_use = if let Some(illusion_idx) = foe.illusion {
+                            &self.sides[foe_side_idx].pokemon[illusion_idx].species_id
+                        } else {
+                            &foe.species_id
+                        };
+                        let species = self.dex.species.get(species_to_use);
+                        let has_abs = species.map(|s| s.abilities.slot0.is_some() || s.abilities.slot1.is_some() || s.abilities.hidden.is_some()).unwrap_or(false);
+                        (species_to_use.clone(), foe.ability.clone(), has_abs)
+                    };
+
+                    // JS: if (!species.abilities) continue;
+                    if !has_abilities {
+                        continue;
+                    }
+
+                    // Get all ability slots for this species
+                    let ability_slots = if let Some(species) = self.dex.species.get(&species_id) {
+                        let mut slots = Vec::new();
+                        if let Some(ref a0) = species.abilities.slot0 {
+                            slots.push(("0", a0.clone()));
+                        }
+                        if let Some(ref a1) = species.abilities.slot1 {
+                            slots.push(("1", a1.clone()));
+                        }
+                        if let Some(ref ah) = species.abilities.hidden {
+                            slots.push(("H", ah.clone()));
+                        }
+                        slots
+                    } else {
+                        Vec::new()
+                    };
+
+                    // JS: for (const abilitySlot in species.abilities)
+                    for (slot_name, ability_name_str) in ability_slots {
+                        let ability_id = ID::new(&ability_name_str);
+
+                        // JS: if (abilityName === source.ability) continue;
+                        // Pokemon event was already run above so we don't need to run it again
+                        if ability_id == current_ability {
+                            continue;
+                        }
+
+                        // JS: const ruleTable = this.ruleTable;
+                        // JS: if ((ruleTable.has('+hackmons') || !ruleTable.has('obtainableabilities')) && !this.format.team)
+                        let skip_hackmons = if let Some(ref rule_table) = self.rule_table {
+                            let has_hackmons = rule_table.has("+hackmons");
+                            let has_obtainable = rule_table.has("obtainableabilities");
+                            let format_has_team = self.format.as_ref()
+                                .and_then(|f| f.team.as_ref())
+                                .is_some();
+                            (has_hackmons || !has_obtainable) && !format_has_team
+                        } else {
+                            false
+                        };
+
+                        if skip_hackmons {
+                            continue; // hackmons format
+                        }
+
+                        // JS: else if (abilitySlot === 'H' && species.unreleasedHidden) continue;
+                        if slot_name == "H" {
+                            // Check if hidden ability is unreleased
+                            if let Some(species) = self.dex.species().get_by_id(&species_id) {
+                                if let Some(ref unreleased) = species.unreleased_hidden {
+                                    // JavaScript: unreleasedHidden can be true or 'Past'
+                                    // Either value means the hidden ability is unreleased
+                                    if unreleased.is_some() {
+                                        continue; // unreleased hidden ability
+                                    }
+                                }
+                            }
+                        }
+
+                        // JS: const ability = this.dex.abilities.get(abilityName);
+                        // JS: if (ruleTable.has('-ability:' + ability.id)) continue;
+                        if let Some(ref rule_table) = self.rule_table {
+                            let ban_rule = format!("-ability:{}", ability_id.as_str());
+                            if rule_table.has(&ban_rule) {
+                                continue;
+                            }
+                        }
+
+                        // JS: if (pokemon.knownType && !this.dex.getImmunity('trapped', pokemon)) continue;
+                        // NOTE: Must use dex.get_immunity() here, NOT run_status_immunity()
+                        // JavaScript uses dex.getImmunity() which is a simple lookup, not runEvent('Immunity')
+                        let should_skip = {
+                            let pokemon = &self.sides[side_idx].pokemon[poke_idx];
+                            let pokemon_types = pokemon.get_types(self, false);
+                            pokemon.known_type && !self.dex.get_immunity("trapped", &pokemon_types)
+                        };
+
+                        if should_skip {
+                            continue;
+                        }
+
+                        // JS: this.singleEvent('FoeMaybeTrapPokemon', ability, {}, pokemon, source);
+                        let ability_effect = self.make_ability_effect(&ability_id);
+                        self.single_event(
+                            "FoeMaybeTrapPokemon",
+                            &ability_effect,
+                            None,
+                            Some(pokemon_pos),
+                            Some(foe_pos),
+                            None,
+                            None,
+                        );
+                    }
+                }
+            }
+        }
+
+        // JS: if (this.maybeTriggerEndlessBattleClause(trappedBySide, stalenessBySide)) return;
+        if self.maybe_trigger_endless_battle_clause(&trapped_by_side, &staleness_by_side) {
+            return;
+        }
+
+        // JS: if (this.gameType === 'triples' && this.sides.every(side => side.pokemonLeft === 1)) {
+        // Triples center logic
+        if self.game_type == GameType::Triples && self.sides.iter().all(|s| s.pokemon_left == 1) {
+            // JS: const actives = this.getAllActive();
+            let actives = self.get_all_active(false);
+
+            // JS: if (actives.length > 1 && !actives[0].isAdjacent(actives[1])) {
+            if actives.len() > 1 {
+                let active0_pos = actives[0];
+                let active1_pos = actives[1];
+
+                // Check if not adjacent using Battle::is_adjacent (fully implemented)
+                let is_adjacent = self.is_adjacent(active0_pos, active1_pos);
+
+                if !is_adjacent {
+                    // JS: this.swapPosition(actives[0], 1, '[silent]');
+                    // JS: this.swapPosition(actives[1], 1, '[silent]');
+                    self.swap_position(active0_pos, 1, Some("[silent]"));
+                    self.swap_position(active1_pos, 1, Some("[silent]"));
+
+                    // JS: this.add('-center');
+                    self.add("-center", &[]);
+                }
+            }
+        }
+
+        self.add("turn", &[self.turn.to_string().into()]);
+
+        // JS: if (this.gameType === 'multi') {
+        // JS:     for (const side of this.sides) {
+        // JS:         if (side.canDynamaxNow()) {
+        // JS:             if (this.turn === 1) {
+        // JS:                 this.addSplit(side.id, ['-candynamax', side.id]);
+        // JS:             } else {
+        // JS:                 this.add('-candynamax', side.id);
+        // JS:             }
+        // JS:         }
+        // JS:     }
+        // JS: }
+        if self.game_type == GameType::Multi {
+            let game_type_str = match self.game_type {
+                GameType::Multi => "multi",
+                GameType::Singles => "singles",
+                GameType::Doubles => "doubles",
+                GameType::Triples => "triples",
+                GameType::Rotation => "rotation",
+                GameType::FreeForAll => "freeforall",
+            };
+
+            for side_idx in 0..self.sides.len() {
+                let side = &self.sides[side_idx];
+                // JS: if (side.canDynamaxNow())
+                if side.can_dynamax_now(self.gen, game_type_str, self.turn) {
+                    let side_id_str = side.id.to_str();
+
+                    // JS: if (this.turn === 1)
+                    if self.turn == 1 {
+                        // JS: this.addSplit(side.id, ['-candynamax', side.id]);
+                        self.add_split(side_id_str, &["-candynamax", side_id_str], None);
+                    } else {
+                        // JS: this.add('-candynamax', side.id);
+                        self.add("-candynamax", &[Arg::Str(side_id_str)]);
+                    }
+                }
+            }
+        }
+
+        // JS: if (this.gen === 2) this.quickClawRoll = this.randomChance(60, 256);
+        if self.gen == 2 {
+            self.quick_claw_roll = self.random_chance(60.0, 256);
+        }
+
+        // JS: if (this.gen === 3) this.quickClawRoll = this.randomChance(1, 5);
+        if self.gen == 3 {
+            self.quick_claw_roll = self.random_chance(1.0, 5);
+        }
+
+        // JS: this.makeRequest('move');
+        self.make_request(Some(BattleRequestState::Move));
+    }
+}

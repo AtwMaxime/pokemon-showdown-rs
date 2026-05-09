@@ -1,0 +1,139 @@
+//! G-Max Wildfire Move
+//!
+//! Pokemon Showdown - http://pokemonshowdown.com/
+//!
+//! Generated from data/moves.ts
+
+use crate::battle::{Battle, hp_fraction};
+use crate::event::EventResult;
+
+pub mod condition {
+    use super::*;
+
+    /// onSideStart(targetSide) {
+    ///     this.add('-sidestart', targetSide, 'G-Max Wildfire');
+    /// }
+    pub fn on_side_start(battle: &mut Battle) -> EventResult {
+        // this.add('-sidestart', targetSide, 'G-Max Wildfire');
+        if let Some(side_index) = battle.with_effect_state_ref(|state| state.side).flatten() {
+            let side_id = if side_index == 0 { "p1" } else { "p2" };
+
+            let side_arg = crate::battle::Arg::Str(side_id);
+            battle.add("-sidestart", &[side_arg, "G-Max Wildfire".into()]);
+        }
+
+        EventResult::Continue
+    }
+
+    /// onResidual(target) {
+    ///     if (!target.hasType('Fire')) this.damage(target.baseMaxhp / 6, target);
+    /// }
+    pub fn on_residual(battle: &mut Battle, target_pos: Option<(usize, usize)>) -> EventResult {
+        let target = match target_pos {
+            Some(pos) => pos,
+            None => return EventResult::Continue,
+        };
+
+        // if (!target.hasType('Fire')) this.damage(target.baseMaxhp / 6, target);
+        let has_fire_type = {
+            let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+                Some(p) => p,
+                None => return EventResult::Continue,
+            };
+            target_pokemon.has_type(battle, "fire")
+        };
+
+        if !has_fire_type {
+            // this.damage(target.baseMaxhp / 6, target);
+            let damage_amount = {
+                let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+                    Some(p) => p,
+                    None => return EventResult::Continue,
+                };
+                hp_fraction(target_pokemon.base_maxhp, 6)
+            };
+
+            battle.damage(damage_amount, Some(target), None, None, false);
+        }
+
+        EventResult::Continue
+    }
+
+    /// onSideEnd(targetSide) {
+    ///     this.add('-sideend', targetSide, 'G-Max Wildfire');
+    /// }
+    pub fn on_side_end(battle: &mut Battle) -> EventResult {
+        // this.add('-sideend', targetSide, 'G-Max Wildfire');
+        if let Some(side_index) = battle.with_effect_state_ref(|state| state.side).flatten() {
+            let side_id = if side_index == 0 { "p1" } else { "p2" };
+
+            let side_arg = crate::battle::Arg::Str(side_id);
+            battle.add("-sideend", &[side_arg, "G-Max Wildfire".into()]);
+        }
+
+        EventResult::Continue
+    }
+}
+
+/// Self-targeting callbacks
+/// These callbacks target the move user (source), not the move target
+pub mod self_callbacks {
+    use super::*;
+
+    /// self.onHit(source)
+    ///
+    /// ```text
+    /// JS Source (data/moves.ts):
+    /// self: {
+    ///     onHit(source) {
+    ///         onHit(source) {
+    ///                 for (const side of source.side.foeSidesWithConditions()) {
+    ///                   side.addSideCondition("gmaxwildfire");
+    ///                 }
+    ///               }
+    ///     },
+    /// }
+    /// ```
+    ///
+    /// NOTE: For self callbacks, the FIRST parameter receives the move USER (source),
+    /// and the SECOND parameter receives the move TARGET (or None).
+    /// The naming convention in dispatch_self_on_hit is misleading - it names them
+    /// target_pos and source_pos, but actually passes source as first, target as second.
+    pub fn on_hit(
+        battle: &mut Battle,
+        source_pos: (usize, usize),          // ACTUAL SOURCE (move user)
+        _target_pos: Option<(usize, usize)>, // ACTUAL TARGET (move target)
+        _source_effect: Option<&crate::battle::Effect>,
+    ) -> EventResult {
+        // for (const side of source.side.foeSidesWithConditions()) {
+        //     side.addSideCondition("gmaxwildfire");
+        // }
+
+        let source_side = source_pos.0;
+
+        // foeSidesWithConditions() returns sides that have active pokemon
+        // In most cases, this is just the opponent's side
+        for side_idx in 0..battle.sides.len() {
+            if side_idx == source_side {
+                continue;
+            }
+
+            // Check if this side has any active pokemon
+            let has_active = battle
+                .get_all_active(false)
+                .into_iter()
+                .any(|(s, _)| s == side_idx);
+
+            if has_active {
+                battle.add_side_condition(
+                    side_idx,
+                    crate::dex_data::ID::from("gmaxwildfire"),
+                    Some(source_pos),
+                    None,
+                );
+            }
+        }
+
+        EventResult::Continue
+    }
+}

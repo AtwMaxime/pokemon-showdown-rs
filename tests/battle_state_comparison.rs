@@ -1,0 +1,444 @@
+//! Battle State Comparison Test
+//!
+//! This test generates random teams from a seed and runs a battle with random
+//! moves. It records the state at every step to enable comparison with the
+//! JavaScript implementation.
+
+use pokemon_showdown::{
+    Battle, BattleOptions, PRNGSeed, PlayerOptions, PRNG, PokemonSet,
+    Gender,
+};
+use pokemon_showdown::dex_data::StatsTable;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize)]
+struct PokemonState {
+    name: String,
+    species: String,
+    hp: i32,
+    maxhp: i32,
+    status: String,
+    fainted: bool,
+    level: u8,
+    ability: String,
+    item: String,
+    moves: Vec<String>,
+    boosts: std::collections::HashMap<String, i32>,
+    types: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct SideState {
+    name: String,
+    id: String,
+    pokemon: Vec<PokemonState>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct BattleState {
+    turn: i32,
+    ended: bool,
+    winner: Option<String>,
+    sides: Vec<SideState>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct TurnLog {
+    turn: i32,
+    p1: String,
+    p2: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct StateRecord {
+    turn: i32,
+    state: BattleState,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct TeamInfo {
+    species: String,
+    moves: Vec<String>,
+    ability: String,
+    item: Option<String>,
+    level: u8,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct BattleLog {
+    seed: Vec<i32>,
+    teams: std::collections::HashMap<String, Vec<TeamInfo>>,
+    states: Vec<StateRecord>,
+    battle_log: Vec<TurnLog>,
+    summary: BattleSummary,
+    prng_calls_per_turn: Vec<usize>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct BattleSummary {
+    turns: i32,
+    winner: Option<String>,
+    ended: bool,
+}
+
+// Structures for loading teams from JSON file
+#[derive(Debug, Deserialize)]
+struct JsonStats {
+    hp: i32,
+    atk: i32,
+    def: i32,
+    spa: i32,
+    spd: i32,
+    spe: i32,
+}
+
+#[derive(Debug, Deserialize)]
+struct JsonPokemon {
+    name: String,
+    species: String,
+    level: u8,
+    ability: String,
+    item: String,
+    nature: String,
+    gender: String,
+    moves: Vec<String>,
+    evs: JsonStats,
+    ivs: JsonStats,
+}
+
+#[derive(Debug, Deserialize)]
+struct JsonTeams {
+    p1: Vec<JsonPokemon>,
+    p2: Vec<JsonPokemon>,
+}
+
+/// Load teams from JSON file (matching JavaScript implementation)
+fn load_teams_from_json(file_path: &str) -> Result<(Vec<PokemonSet>, Vec<PokemonSet>), Box<dyn std::error::Error>> {
+    let json_content = std::fs::read_to_string(file_path)?;
+    let teams: JsonTeams = serde_json::from_str(&json_content)?;
+
+    let convert_pokemon = |json_poke: JsonPokemon| -> PokemonSet {
+        let gender = match json_poke.gender.as_str() {
+            "M" => Gender::Male,
+            "F" => Gender::Female,
+            _ => Gender::None,
+        };
+
+        PokemonSet {
+            name: json_poke.name,
+            species: json_poke.species,
+            item: json_poke.item,
+            ability: json_poke.ability,
+            moves: json_poke.moves,
+            nature: json_poke.nature,
+            gender,
+            evs: StatsTable {
+                hp: json_poke.evs.hp,
+                atk: json_poke.evs.atk,
+                def: json_poke.evs.def,
+                spa: json_poke.evs.spa,
+                spd: json_poke.evs.spd,
+                spe: json_poke.evs.spe,
+            },
+            ivs: StatsTable {
+                hp: json_poke.ivs.hp,
+                atk: json_poke.ivs.atk,
+                def: json_poke.ivs.def,
+                spa: json_poke.ivs.spa,
+                spd: json_poke.ivs.spd,
+                spe: json_poke.ivs.spe,
+            },
+            level: json_poke.level,
+            shiny: false,
+            happiness: 255,
+            pokeball: "pokeball".to_string(),
+            hptype: None,
+            dynamax_level: 10,
+            gigantamax: false,
+            tera_type: None,
+        }
+    };
+
+    let team1 = teams.p1.into_iter().map(convert_pokemon).collect();
+    let team2 = teams.p2.into_iter().map(convert_pokemon).collect();
+
+    Ok((team1, team2))
+}
+
+/// Extract battle state at a given point
+fn extract_battle_state(battle: &Battle) -> BattleState {
+    let mut sides = Vec::new();
+
+    for side in &battle.sides {
+        let mut pokemon_states = Vec::new();
+
+        for pokemon in &side.pokemon {
+            pokemon_states.push(PokemonState {
+                name: pokemon.name.clone(),
+                species: pokemon.species_id.to_string(),
+                hp: pokemon.hp,
+                maxhp: pokemon.maxhp,
+                status: pokemon.status.to_string(),
+                fainted: pokemon.fainted,
+                level: pokemon.level,
+                ability: pokemon.ability.to_string(),
+                item: pokemon.item.to_string(),
+                moves: pokemon.move_slots.iter().map(|m| m.id.to_string()).collect(),
+                boosts: std::collections::HashMap::new(), // TODO: Add boosts when implemented
+                types: pokemon.types.clone(),
+            });
+        }
+
+        sides.push(SideState {
+            name: side.name.clone(),
+            id: side.id.to_str().to_string(),
+            pokemon: pokemon_states,
+        });
+    }
+
+    BattleState {
+        turn: battle.turn,
+        ended: battle.ended,
+        winner: battle.winner.clone(),
+        sides,
+    }
+}
+
+/// Make a random choice for a player
+fn make_random_choice(battle: &Battle, player_id: &str, prng: &mut PRNG) -> String {
+    // Find the side for this player
+    let side = battle
+        .sides
+        .iter()
+        .find(|s| s.id.to_str() == player_id);
+
+    let Some(side) = side else {
+        return "pass".to_string();
+    };
+
+    // Get the active Pokemon
+    if side.active.is_empty() {
+        return "pass".to_string();
+    }
+
+    let active_idx = side.active[0];
+    let Some(pokemon_idx) = active_idx else {
+        return "pass".to_string();
+    };
+
+    let pokemon = &side.pokemon[pokemon_idx];
+
+    // If fainted, we need to switch
+    if pokemon.fainted {
+        // Find a Pokemon to switch to
+        for (idx, p) in side.pokemon.iter().enumerate() {
+            if !p.fainted && !side.active.contains(&Some(idx)) {
+                return format!("switch {}", idx + 1);
+            }
+        }
+        return "pass".to_string();
+    }
+
+    // Otherwise, pick a random move (1-4)
+    if pokemon.move_slots.is_empty() {
+        return "pass".to_string();
+    }
+
+    let num_moves = pokemon.move_slots.len();
+    let move_idx = prng.random(Some(0), Some(num_moves as i32)) as usize;
+    format!("move {}", move_idx + 1)
+}
+
+/// Run a deterministic battle and record states
+fn run_battle_with_states(seed: PRNGSeed, max_turns: i32) -> BattleLog {
+    // Load dex for team generation
+    let dex = pokemon_showdown::Dex::load_default().expect("Failed to load dex");
+
+    // Load pre-generated teams from JSON file (matching JavaScript implementation)
+    let (team1, team2) = load_teams_from_json("teams-js.json")
+        .expect("Failed to load teams from teams-js.json");
+
+    println!("Rust: Loaded teams from teams-js.json");
+    println!("Rust: P1 Team: {:?}", team1.iter().map(|p| &p.species).collect::<Vec<_>>());
+    println!("Rust: P2 Team: {:?}", team2.iter().map(|p| &p.species).collect::<Vec<_>>());
+
+    // Create battle with the seed
+    let mut battle = Battle::new(BattleOptions {
+        format_id: pokemon_showdown::ID::new("gen9randombattle"),
+        seed: Some(seed.clone()),
+        p1: Some(PlayerOptions {
+            name: "Player 1".to_string(),
+            team: team1.clone(),
+            avatar: None,
+            rating: None,
+        }),
+        p2: Some(PlayerOptions {
+            name: "Player 2".to_string(),
+            team: team2.clone(),
+            avatar: None,
+            rating: None,
+        }),
+        ..Default::default()
+    });
+
+    // PRNG for making random choices
+    let mut choice_prng = PRNG::new(Some(seed.clone()));
+
+    // Prepare log
+    let seed_vec: Vec<i32> = match seed {
+        PRNGSeed::Gen5(ref s) => s.iter().map(|&x| x as i32).collect(),
+        PRNGSeed::Sodium(_) => vec![0, 0, 0, 0],
+    };
+
+    let mut log = BattleLog {
+        seed: seed_vec,
+        teams: std::collections::HashMap::new(),
+        states: Vec::new(),
+        battle_log: Vec::new(),
+        summary: BattleSummary {
+            turns: 0,
+            winner: None,
+            ended: false,
+        },
+        prng_calls_per_turn: Vec::new(),
+    };
+
+    // Add team info
+    log.teams.insert(
+        "p1".to_string(),
+        team1
+            .iter()
+            .map(|p| TeamInfo {
+                species: p.species.clone(),
+                moves: p.moves.clone(),
+                ability: p.ability.clone(),
+                item: Some(p.item.clone()),
+                level: p.level,
+            })
+            .collect(),
+    );
+
+    log.teams.insert(
+        "p2".to_string(),
+        team2
+            .iter()
+            .map(|p| TeamInfo {
+                species: p.species.clone(),
+                moves: p.moves.clone(),
+                ability: p.ability.clone(),
+                item: Some(p.item.clone()),
+                level: p.level,
+            })
+            .collect(),
+    );
+
+    // Record initial state (before turn 1)
+    log.states.push(StateRecord {
+        turn: 0,
+        state: extract_battle_state(&battle),
+    });
+
+    // Run the battle
+    let mut turn = 0;
+    while !battle.ended && turn < max_turns {
+        turn += 1;
+
+        // Track PRNG calls before turn
+        let prng_before = battle.prng.call_count;
+
+        // Use "default" choices (move 1) to match JavaScript test behavior
+        let p1_choice = "default";
+        let p2_choice = "default";
+
+        // Record choices
+        log.battle_log.push(TurnLog {
+            turn,
+            p1: p1_choice.to_string(),
+            p2: p2_choice.to_string(),
+        });
+
+        // Execute choices
+        battle.make_choices(&[&p1_choice, &p2_choice]);
+
+        // Track PRNG calls after turn
+        let prng_after = battle.prng.call_count;
+        let calls_this_turn = prng_after - prng_before;
+        log.prng_calls_per_turn.push(calls_this_turn);
+
+        println!("Rust: Turn {} - PRNG calls: {} (total: {})", turn, calls_this_turn, prng_after);
+
+        // Log Cinderace HP for debugging
+        for (side_idx, side) in battle.sides.iter().enumerate() {
+            for pokemon in &side.pokemon {
+                if pokemon.name.contains("Cinderace") {
+                    if pokemon.fainted {
+                        eprintln!("Turn {}: Cinderace is FAINTED", turn);
+                    } else if side.active.contains(&Some(side.pokemon.iter().position(|p| p.name == pokemon.name).unwrap())) {
+                        eprintln!("Turn {}: Cinderace HP = {}/{} (PRNG calls: {}, total: {})",
+                            turn, pokemon.hp, pokemon.maxhp, calls_this_turn, prng_after);
+                    } else {
+                        eprintln!("Turn {}: Cinderace HP = {}/{} [not active] (PRNG calls: {}, total: {})",
+                            turn, pokemon.hp, pokemon.maxhp, calls_this_turn, prng_after);
+                    }
+                }
+            }
+        }
+
+        // Record state after turn
+        log.states.push(StateRecord {
+            turn,
+            state: extract_battle_state(&battle),
+        });
+
+        // Check if battle ended
+        if turn >= max_turns {
+            break;
+        }
+    }
+
+    // Add final summary
+    log.summary = BattleSummary {
+        turns: turn,
+        winner: battle.winner.clone(),
+        ended: battle.ended,
+    };
+
+    log
+}
+
+// This function is called by test_run_comparison below, so don't mark it as a separate test
+// #[test]
+fn test_battle_state_comparison() {
+    let seed = PRNGSeed::Gen5([0, 0, 0, 1]);
+    println!("Rust: Running deterministic battle with seed: {:?}", seed);
+
+    let log = run_battle_with_states(seed.clone(), 1000);  // Run until battle ends (max 1000 turns)
+
+    println!("Rust: Total turns: {}", log.summary.turns);
+    println!("Rust: Winner: {:?}", log.summary.winner);
+    println!("Rust: Total PRNG calls: {}", log.prng_calls_per_turn.iter().sum::<usize>());
+    println!("Rust: PRNG calls per turn: {:?}", log.prng_calls_per_turn);
+
+    // Save trace to file for comparison
+    let trace_json = serde_json::to_string_pretty(&log).expect("Failed to serialize trace");
+    std::fs::write("trace-rust-seed1.json", trace_json).expect("Failed to write trace file");
+    println!("Rust: Trace saved to trace-rust-seed1.json");
+
+    // Print turn 1 results for comparison
+    if log.states.len() > 1 {
+        let turn1 = &log.states[1];
+        let p1_hp = turn1.state.sides[0].pokemon[0].hp;
+        let p2_hp = turn1.state.sides[1].pokemon[0].hp;
+        println!("After turn 1: P1 HP={}, P2 HP={}", p1_hp, p2_hp);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_run_comparison() {
+        test_battle_state_comparison();
+    }
+}

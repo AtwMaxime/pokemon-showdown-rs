@@ -1,0 +1,267 @@
+use crate::*;
+use crate::event::EventResult;
+use crate::event_system::SharedEffectState;
+
+/// Check if an item is a restorative berry
+/// JavaScript: RESTORATIVE_BERRIES.has(item.id)
+fn is_restorative_berry(item_id: &str) -> bool {
+    matches!(
+        item_id,
+        "leppaberry"
+            | "aguavberry"
+            | "enigmaberry"
+            | "figyberry"
+            | "iapapaberry"
+            | "magoberry"
+            | "sitrusberry"
+            | "wikiberry"
+            | "oranberry"
+    )
+}
+
+impl Pokemon {
+
+    /// Eat held item (berries)
+    /// Equivalent to eatItem in pokemon.ts
+    //
+    // 	eatItem(force?: boolean, source?: Pokemon, sourceEffect?: Effect) {
+    // 		if (!this.item) return false;
+    // 		if ((!this.hp && this.item !== 'jabocaberry' && this.item !== 'rowapberry') || !this.isActive) return false;
+    //
+    // 		if (!sourceEffect && this.battle.effect) sourceEffect = this.battle.effect;
+    // 		if (!source && this.battle.event?.target) source = this.battle.event.target;
+    // 		const item = this.getItem();
+    // 		if (sourceEffect?.effectType === 'Item' && this.item !== sourceEffect.id && source === this) {
+    // 			// if an item is telling us to eat it but we aren't holding it, we probably shouldn't eat what we are holding
+    // 			return false;
+    // 		}
+    // 		if (
+    // 			this.battle.runEvent('UseItem', this, null, null, item) &&
+    // 			(force || this.battle.runEvent('TryEatItem', this, null, null, item))
+    // 		) {
+    // 			this.battle.add('-enditem', this, item, '[eat]');
+    //
+    // 			this.battle.singleEvent('Eat', item, this.itemState, this, source, sourceEffect);
+    // 			this.battle.runEvent('EatItem', this, source, sourceEffect, item);
+    //
+    // 			if (RESTORATIVE_BERRIES.has(item.id)) {
+    // 				switch (this.pendingStaleness) {
+    // 				case 'internal':
+    // 					if (this.staleness !== 'external') this.staleness = 'internal';
+    // 					break;
+    // 				case 'external':
+    // 					this.staleness = 'external';
+    // 					break;
+    // 				}
+    // 				this.pendingStaleness = undefined;
+    // 			}
+    //
+    // 			this.lastItem = this.item;
+    // 			this.item = '';
+    // 			this.battle.clearEffectState(this.itemState);
+    // 			this.usedItemThisTurn = true;
+    // 			this.ateBerry = true;
+    // 			this.battle.runEvent('AfterUseItem', this, null, null, item);
+    // 			return true;
+    // 		}
+    // 		return false;
+    // 	}
+    //
+    /// Refactored to associated function for Battle access (Session 24 Part 49)
+    pub fn eat_item(
+        battle: &mut Battle,
+        pokemon_pos: (usize, usize),
+        is_forced: bool,
+        source_pos_param: Option<(usize, usize)>,
+        source_effect_param: Option<&Effect>,
+    ) -> Option<ID> {
+        // Phase 1: Extract pokemon data to check conditions
+        let (item_id, hp, is_active) = {
+            let pokemon = match battle.pokemon_at(pokemon_pos.0, pokemon_pos.1) {
+                Some(p) => p,
+                None => return None,
+            };
+
+            // JS: if (!this.item) return false;
+            if pokemon.item.is_empty() {
+                return None;
+            }
+
+            (pokemon.item.clone(), pokemon.hp, pokemon.is_active)
+        };
+
+        // JS: if ((!this.hp && this.item !== 'jabocaberry' && this.item !== 'rowapberry') || !this.isActive) return false;
+        // ✅ NOW IMPLEMENTED: HP check with Jaboca/Rowap Berry exception
+        if hp == 0
+            && item_id != ID::from("jabocaberry")
+            && item_id != ID::from("rowapberry") {
+            return None;
+        }
+        // ✅ NOW IMPLEMENTED: isActive check
+        if !is_active {
+            return None;
+        }
+
+        // JS: if (!sourceEffect && this.battle.effect) sourceEffect = this.battle.effect;
+        // JS: if (!source && this.battle.event?.target) source = this.battle.event.target;
+        // ✅ NOW IMPLEMENTED: Default source/sourceEffect from battle.event/battle.effect
+        let (source_pos, default_effect) = if battle.event.is_some() {
+            // If source_pos is None, try to get it from battle.event.target
+            // Note: eat_item uses event.target, not event.source (per JavaScript)
+            let event_target = battle.event.as_ref().and_then(|e| e.target);
+            let resolved_source = source_pos_param.or(event_target);
+
+            // If source_effect is None, get battle.effect as owned value
+            let resolved_effect = if source_effect_param.is_none() {
+                battle.effect.clone()
+            } else {
+                None  // We'll use the passed-in source_effect
+            };
+            (resolved_source, resolved_effect)
+        } else {
+            (source_pos_param, None)
+        };
+
+        // Use passed-in source_effect if available, otherwise use the default from battle.effect
+        let source_effect_ref = source_effect_param.or(default_effect.as_ref());
+
+        // JS: const item = this.getItem();
+        // JS: if (sourceEffect?.effectType === 'Item' && this.item !== sourceEffect.id && source === this) {
+        // JS:     return false;
+        // JS: }
+        // ✅ NOW IMPLEMENTED: sourceEffect item type check
+        if let Some(effect) = source_effect_ref {
+            if effect.effect_type == crate::battle::EffectType::Item {
+                // If an item is telling us to eat it but we aren't holding it,
+                // and source is this pokemon, we probably shouldn't eat what we are holding
+                if item_id.as_str() != effect.id.as_str() {
+                    // Check if source === this (source_pos matches pokemon_pos)
+                    if source_pos == Some(pokemon_pos) {
+                        return None;
+                    }
+                }
+            }
+        }
+
+        // JS: if (
+        // JS:     this.battle.runEvent('UseItem', this, null, null, item) &&
+        // JS:     (force || this.battle.runEvent('TryEatItem', this, null, null, item))
+        // JS: ) { ... }
+        // ✅ NOW IMPLEMENTED (Session 24 Part 83): runEvent('UseItem') and runEvent('TryEatItem')
+        // Note: JavaScript passes item as 5th parameter (relayVar), but Rust run_event only accepts Option<i32>
+        //       Passing None for now - handlers can check pokemon's item field
+        let use_item_result = battle.run_event("UseItem", Some(crate::event::EventTarget::Pokemon(pokemon_pos)), None, None, EventResult::Continue, false, false);
+        // Check for falsy results: Boolean(false), Number(0), Null, or Stop
+        if matches!(use_item_result, EventResult::Boolean(false) | EventResult::Number(0) | EventResult::Null | EventResult::Stop) {
+            return None; // false in JavaScript
+        }
+
+        // Check TryEatItem unless forced
+        // JavaScript: this.battle.runEvent('TryEatItem', this, null, null, item)
+        // The item is passed as relayVar (5th parameter), so handlers receive it as first argument
+        if !is_forced {
+            debug_elog!("[EAT_ITEM] About to call TryEatItem for item={}", item_id);
+            let try_eat_result = battle.run_event("TryEatItem", Some(crate::event::EventTarget::Pokemon(pokemon_pos)), None, None, EventResult::String(item_id.to_string()), false, false);
+            debug_elog!("[EAT_ITEM] TryEatItem result={:?}", try_eat_result);
+            // Check for falsy results: Boolean(false), Number(0), Null, or Stop
+            if matches!(try_eat_result, EventResult::Boolean(false) | EventResult::Number(0) | EventResult::Null | EventResult::Stop) {
+                debug_elog!("[EAT_ITEM] TryEatItem returned falsy, returning None");
+                return None; // false in JavaScript
+            }
+        }
+
+        debug_elog!("[EAT_ITEM] Passed TryEatItem check, about to add -enditem");
+
+        // JS: this.battle.add('-enditem', this, item, '[eat]');
+        // ✅ NOW IMPLEMENTED (Session 24 Part 51): battle.add message for eating items
+        // Prepare message arguments (extract data, then drop borrows before battle.add call)
+        let message_args: Vec<Arg> = {
+            let pokemon = match battle.pokemon_at(pokemon_pos.0, pokemon_pos.1) {
+                Some(p) => p,
+                None => return None,
+            };
+            let pokemon_str = format!("{}", pokemon);
+            let item_str = item_id.to_string();
+            vec![Arg::String(pokemon_str), Arg::String(item_str), Arg::String("[eat]".to_string())]
+        };
+        // All borrows dropped - now safe to call battle.add
+        debug_elog!("[EAT_ITEM] Adding -enditem message");
+        battle.add("-enditem", &message_args);
+
+        // JS: this.battle.singleEvent('Eat', item, this.itemState, this, source, sourceEffect);
+        // JS: this.battle.runEvent('EatItem', this, source, sourceEffect, item);
+        // ✅ NOW IMPLEMENTED (Session 24 Part 83): singleEvent('Eat') and runEvent('EatItem')
+        debug_elog!("[EAT_ITEM] About to call singleEvent('Eat') for item={}", item_id);
+        let eat_effect = battle.make_item_effect(&item_id);
+        battle.single_event("Eat", &eat_effect, None, Some(pokemon_pos), source_pos, source_effect_ref, None);
+        debug_elog!("[EAT_ITEM] About to call runEvent('EatItem')");
+        let eat_item_effect = battle.make_item_effect(&item_id);
+        battle.run_event("EatItem", Some(crate::event::EventTarget::Pokemon(pokemon_pos)), source_pos, Some(&eat_item_effect), EventResult::Continue, false, false);
+
+        // JS: if (RESTORATIVE_BERRIES.has(item.id)) {
+        // JS:     switch (this.pendingStaleness) {
+        // JS:     case 'internal':
+        // JS:         if (this.staleness !== 'external') this.staleness = 'internal';
+        // JS:         break;
+        // JS:     case 'external':
+        // JS:         this.staleness = 'external';
+        // JS:         break;
+        // JS:     }
+        // JS:     this.pendingStaleness = undefined;
+        // JS: }
+        // ✅ NOW IMPLEMENTED (Session 24 Part 52): RESTORATIVE_BERRIES staleness logic
+        if is_restorative_berry(item_id.as_str()) {
+            let pokemon_mut = match battle.pokemon_at_mut(pokemon_pos.0, pokemon_pos.1) {
+                Some(p) => p,
+                None => return None,
+            };
+
+            match pokemon_mut.pending_staleness.as_deref() {
+                Some("internal") => {
+                    // Only set to internal if not already external
+                    if pokemon_mut.staleness.as_deref() != Some("external") {
+                        pokemon_mut.staleness = Some("internal".to_string());
+                    }
+                }
+                Some("external") => {
+                    pokemon_mut.staleness = Some("external".to_string());
+                }
+                _ => {
+                    // No pending staleness or other value - do nothing
+                }
+            }
+            pokemon_mut.pending_staleness = None;
+        }
+
+        // Phase 2: Mutate pokemon to consume item
+        let pokemon_mut = match battle.pokemon_at_mut(pokemon_pos.0, pokemon_pos.1) {
+            Some(p) => p,
+            None => return None,
+        };
+
+        // JS: this.lastItem = this.item;
+        pokemon_mut.last_item = item_id.clone();
+
+        // JS: this.item = '';
+        pokemon_mut.item = ID::empty();
+
+        // JS: this.battle.clearEffectState(this.itemState);
+        pokemon_mut.item_state = SharedEffectState::with_id(ID::empty());
+
+        // JS: this.usedItemThisTurn = true;
+        pokemon_mut.used_item_this_turn = true;
+
+        // JS: this.ateBerry = true;
+        // ✅ NOW IMPLEMENTED: ateBerry tracking (specific to eat_item)
+        pokemon_mut.ate_berry = true;
+
+        // JS: this.battle.runEvent('AfterUseItem', this, null, null, item);
+        // ✅ NOW IMPLEMENTED (Session 24 Part 83): runEvent('AfterUseItem')
+        // Note: JavaScript passes item as 5th parameter (relayVar), but Rust run_event only accepts Option<i32>
+        //       Passing None for now - handlers can check pokemon's item field which is now empty
+        battle.run_event("AfterUseItem", Some(crate::event::EventTarget::Pokemon(pokemon_pos)), None, None, EventResult::Continue, false, false);
+
+        // JS: return true;
+        Some(item_id)
+    }
+}

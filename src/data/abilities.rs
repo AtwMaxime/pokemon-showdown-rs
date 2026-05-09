@@ -1,0 +1,11 @@
+// All abilities are now loaded from data/abilities.json
+// This file is kept for compatibility with existing code that references ability constants
+//
+// Ability data comes from:
+// 1. data/abilities.json - base ability data (name, desc, rating, etc.)
+// 2. src/data/ability_callbacks/ - custom event handlers per ability
+//
+// Access abilities via Battle.dex.abilities().get(name) or Battle.dex.abilities
+
+// Re-export ability data type from dex
+pub use crate::dex::AbilityData;

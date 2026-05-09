@@ -1,0 +1,70 @@
+//! Ion Deluge Move
+//!
+//! Pokemon Showdown - http://pokemonshowdown.com/
+//!
+//! Generated from data/moves.ts
+
+use crate::battle::Battle;
+use crate::event::EventResult;
+
+pub mod condition {
+    use super::*;
+
+    /// onFieldStart(target, source, sourceEffect) {
+    ///     this.add('-fieldactivate', 'move: Ion Deluge');
+    ///     this.hint(`Normal-type moves become Electric-type after using ${sourceEffect}.`);
+    /// }
+    pub fn on_field_start(
+        battle: &mut Battle,
+        _target_pos: Option<(usize, usize)>,
+        _source_pos: Option<(usize, usize)>,
+    ) -> EventResult {
+        // this.add('-fieldactivate', 'move: Ion Deluge');
+        battle.add("-fieldactivate", &["move: Ion Deluge".into()]);
+
+        // this.hint(`Normal-type moves become Electric-type after using ${sourceEffect}.`);
+        let source_effect = battle
+            .with_effect_state_ref(|state| state.source_effect.as_ref().map(|s| s.to_string()))
+            .flatten()
+            .unwrap_or_else(|| "Ion Deluge".to_string());
+        battle.hint(
+            &format!(
+                "Normal-type moves become Electric-type after using {}.",
+                source_effect
+            ),
+            true,
+            None,
+        );
+
+        EventResult::Continue
+    }
+
+    /// onModifyType(move) {
+    ///     if (move.type === 'Normal') {
+    ///         move.type = 'Electric';
+    ///         this.debug(move.name + "'s type changed to Electric");
+    ///     }
+    /// }
+    pub fn on_modify_type(battle: &mut Battle, _active_move: Option<&crate::battle_actions::ActiveMove>) -> EventResult {
+        // if (move.type === 'Normal') {
+        //     move.type = 'Electric';
+        //     this.debug(move.name + "'s type changed to Electric");
+        // }
+        let (is_normal, move_name) = {
+            if let Some(ref active_move) = battle.active_move {
+                (active_move.borrow().move_type.eq_ignore_ascii_case("Normal"), active_move.borrow().name.clone())
+            } else {
+                return EventResult::Continue;
+            }
+        };
+
+        if is_normal {
+            if let Some(ref active_move) = battle.active_move {
+                active_move.borrow_mut().move_type = String::from("Electric");
+            }
+            battle.debug(&format!("{}'s type changed to Electric", move_name));
+        }
+
+        EventResult::Continue
+    }
+}

@@ -1,0 +1,72 @@
+//! Hadron Engine Ability
+//!
+//! Pokemon Showdown - http://pokemonshowdown.com/
+//!
+//! Generated from data/abilities.ts
+
+use crate::battle::{Battle, Arg, Effect};
+use crate::event::EventResult;
+
+/// onStart(pokemon) {
+///     if (!this.field.setTerrain('electricterrain') && this.field.isTerrain('electricterrain')) {
+///         this.add('-activate', pokemon, 'ability: Hadron Engine');
+///     }
+/// }
+pub fn on_start(battle: &mut Battle, pokemon_pos: (usize, usize), _source_pos: Option<(usize, usize)>, _effect: Option<&Effect>) -> EventResult {
+    // if (!this.field.setTerrain('electricterrain') && this.field.isTerrain('electricterrain')) {
+    //     this.add('-activate', pokemon, 'ability: Hadron Engine');
+    // }
+
+    // Try to set electric terrain (returns false if already set)
+    let hadronengine_id = crate::dex_data::ID::from("hadronengine");
+    let source_effect = Some(battle.make_ability_effect(&hadronengine_id));
+    let terrain_set = battle.set_terrain(crate::dex_data::ID::new("electricterrain"), Some(pokemon_pos), source_effect);
+
+    // If terrain was already electric terrain (setTerrain returned false) and is still electric terrain
+    if !terrain_set && battle.is_terrain("electricterrain") {
+        // Get Pokemon identifier string before the mutable borrow
+        let pokemon_id = {
+            let pokemon = match battle.pokemon_at(pokemon_pos.0, pokemon_pos.1) {
+                Some(p) => p,
+                None => return EventResult::Continue,
+            };
+
+            // Format Pokemon ID like Display trait: "p1a: Pikachu"
+            let side_id = format!("p{}", pokemon.side_index + 1);
+            if pokemon.is_active {
+                let pos_letter = (b'a' + pokemon.position as u8) as char;
+                format!("{}{}: {}", side_id, pos_letter, pokemon.name)
+            } else {
+                format!("{}: {}", side_id, pokemon.name)
+            }
+        };
+
+        battle.add("-activate", &[
+            Arg::String(pokemon_id),
+            Arg::Str("ability: Hadron Engine"),
+        ]);
+    }
+
+    EventResult::Continue
+}
+
+/// onModifySpA(atk, attacker, defender, move) {
+///     if (this.field.isTerrain('electricterrain')) {
+///         this.debug('Hadron Engine boost');
+///         return this.chainModify([5461, 4096]);
+///     }
+/// }
+pub fn on_modify_sp_a(battle: &mut Battle, _spa: i32, _attacker_pos: (usize, usize), _defender_pos: (usize, usize), _active_move: Option<&crate::battle_actions::ActiveMove>) -> EventResult {
+    // if (this.field.isTerrain('electricterrain')) {
+    //     this.debug('Hadron Engine boost');
+    //     return this.chainModify([5461, 4096]);
+    // }
+
+    if battle.is_terrain("electricterrain") {
+        debug_elog!("Hadron Engine boost");
+        battle.chain_modify_fraction(5461, 4096); return EventResult::Continue;
+    }
+
+    EventResult::Continue
+}
+

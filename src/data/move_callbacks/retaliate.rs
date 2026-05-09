@@ -1,0 +1,42 @@
+//! Retaliate Move
+//!
+//! Pokemon Showdown - http://pokemonshowdown.com/
+//!
+//! Generated from data/moves.ts
+
+use crate::battle::Battle;
+use crate::event::EventResult;
+
+/// onBasePower(basePower, pokemon) {
+///     if (pokemon.side.faintedLastTurn) {
+///         this.debug('Boosted for a faint last turn');
+///         return this.chainModify(2);
+///     }
+/// }
+pub fn on_base_power(
+    battle: &mut Battle,
+    _base_power: i32,
+    pokemon_pos: (usize, usize),
+    _target_pos: Option<(usize, usize)>,
+) -> EventResult {
+    let pokemon = pokemon_pos;
+
+    // if (pokemon.side.faintedLastTurn) {
+    //     this.debug('Boosted for a faint last turn');
+    //     return this.chainModify(2);
+    // }
+    let fainted_last_turn = {
+        let side = match battle.sides.get(pokemon.0) {
+            Some(s) => s,
+            None => return EventResult::Continue,
+        };
+        side.fainted_last_turn
+    };
+
+    if fainted_last_turn.is_some() {
+        battle.debug("Boosted for a faint last turn");
+        battle.chain_modify(2_f32); return EventResult::Continue;
+    }
+
+    EventResult::Continue
+}

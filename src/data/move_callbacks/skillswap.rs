@@ -1,0 +1,310 @@
+//! Skill Swap Move
+//!
+//! Pokemon Showdown - http://pokemonshowdown.com/
+//!
+//! Generated from data/moves.ts
+
+use crate::battle::Battle;
+use crate::event::EventResult;
+
+/// onTryHit(target, source) {
+///     const targetAbility = target.getAbility();
+///     const sourceAbility = source.getAbility();
+///     if (sourceAbility.flags['failskillswap'] || targetAbility.flags['failskillswap'] || target.volatiles['dynamax']) {
+///         return false;
+///     }
+///     const sourceCanBeSet = this.runEvent('SetAbility', source, source, this.effect, targetAbility);
+///     if (!sourceCanBeSet) return sourceCanBeSet;
+///     const targetCanBeSet = this.runEvent('SetAbility', target, source, this.effect, sourceAbility);
+///     if (!targetCanBeSet) return targetCanBeSet;
+/// }
+pub fn on_try_hit(
+    battle: &mut Battle,
+    target_pos: (usize, usize),
+    source_pos: (usize, usize),
+) -> EventResult {
+    use crate::dex_data::ID;
+
+    // JavaScript: onTryHit(target, source) - target comes first, source second
+    let target = target_pos;
+    let source = source_pos;
+
+    // const targetAbility = target.getAbility();
+    // const sourceAbility = source.getAbility();
+    let (target_ability_id, source_ability_id) = {
+        let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        let source_pokemon = match battle.pokemon_at(source.0, source.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        (
+            target_pokemon.ability.clone(),
+            source_pokemon.ability.clone(),
+        )
+    };
+
+    // if (sourceAbility.flags['failskillswap'] || targetAbility.flags['failskillswap'] || target.volatiles['dynamax']) {
+    //     return false;
+    // }
+    let source_fails = {
+        let source_ability = battle.dex.abilities().get_by_id(&source_ability_id);
+        if let Some(ability) = source_ability {
+            ability.flags.get("failskillswap").copied().unwrap_or(0) != 0
+        } else {
+            false
+        }
+    };
+
+    let target_fails = {
+        let target_ability = battle.dex.abilities().get_by_id(&target_ability_id);
+        if let Some(ability) = target_ability {
+            ability.flags.get("failskillswap").copied().unwrap_or(0) != 0
+        } else {
+            false
+        }
+    };
+
+    let has_dynamax = {
+        let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        target_pokemon.volatiles.contains_key(&ID::from("dynamax"))
+    };
+
+    if source_fails || target_fails || has_dynamax {
+        return EventResult::Boolean(false);
+    }
+
+    // const sourceCanBeSet = this.runEvent('SetAbility', source, source, this.effect, targetAbility);
+    // if (!sourceCanBeSet) return sourceCanBeSet;
+    let target_ability_effect = battle.make_ability_effect(&target_ability_id);
+    let source_can_be_set = battle.run_event(
+                "SetAbility",
+                Some(crate::event::EventTarget::Pokemon(source)),
+        Some(source),
+        Some(&target_ability_effect),
+        crate::event::EventResult::Number(1),
+        false,
+        false,
+    ).is_truthy();
+    if !source_can_be_set {
+        return EventResult::Boolean(false);
+    }
+
+    // const targetCanBeSet = this.runEvent('SetAbility', target, source, this.effect, sourceAbility);
+    // if (!targetCanBeSet) return targetCanBeSet;
+    let source_ability_effect = battle.make_ability_effect(&source_ability_id);
+    let target_can_be_set = battle.run_event(
+                "SetAbility",
+                Some(crate::event::EventTarget::Pokemon(target)),
+        Some(source),
+        Some(&source_ability_effect),
+        crate::event::EventResult::Number(1),
+        false,
+        false,
+    ).is_truthy();
+    if !target_can_be_set {
+        return EventResult::Boolean(false);
+    }
+
+    EventResult::Continue
+}
+
+/// onHit(target, source, move) {
+///     const targetAbility = target.getAbility();
+///     const sourceAbility = source.getAbility();
+///     if (target.isAlly(source)) {
+///         this.add('-activate', source, 'move: Skill Swap', '', '', `[of] ${target}`);
+///     } else {
+///         this.add('-activate', source, 'move: Skill Swap', targetAbility, sourceAbility, `[of] ${target}`);
+///     }
+///     this.singleEvent('End', sourceAbility, source.abilityState, source);
+///     this.singleEvent('End', targetAbility, target.abilityState, target);
+///     source.ability = targetAbility.id;
+///     target.ability = sourceAbility.id;
+///     source.abilityState = this.initEffectState({ id: this.toID(source.ability), target: source });
+///     target.abilityState = this.initEffectState({ id: this.toID(target.ability), target });
+///     source.volatileStaleness = undefined;
+///     if (!target.isAlly(source)) target.volatileStaleness = 'external';
+///     this.singleEvent('Start', targetAbility, source.abilityState, source);
+///     this.singleEvent('Start', sourceAbility, target.abilityState, target);
+/// }
+pub fn on_hit(
+    battle: &mut Battle,
+    target_pos: (usize, usize),  // First param is target
+    source_pos: Option<(usize, usize)>,  // Second param is source
+) -> EventResult {
+    // onHit(target, source, move) {
+    //     const targetAbility = target.getAbility();
+    //     const sourceAbility = source.getAbility();
+    //     if (target.isAlly(source)) {
+    //         this.add('-activate', source, 'move: Skill Swap', '', '', `[of] ${target}`);
+    //     } else {
+    //         this.add('-activate', source, 'move: Skill Swap', targetAbility, sourceAbility, `[of] ${target}`);
+    //     }
+    //     this.singleEvent('End', sourceAbility, source.abilityState, source);
+    //     this.singleEvent('End', targetAbility, target.abilityState, target);
+    //     source.ability = targetAbility.id;
+    //     target.ability = sourceAbility.id;
+    //     source.abilityState = this.initEffectState({ id: this.toID(source.ability), target: source });
+    //     target.abilityState = this.initEffectState({ id: this.toID(target.ability), target });
+    //     source.volatileStaleness = undefined;
+    //     if (!target.isAlly(source)) target.volatileStaleness = 'external';
+    //     this.singleEvent('Start', targetAbility, source.abilityState, source);
+    //     this.singleEvent('Start', sourceAbility, target.abilityState, target);
+    // }
+    let target = target_pos;
+    let source = match source_pos {
+        Some(pos) => pos,
+        None => return EventResult::Continue,
+    };
+
+    // const targetAbility = target.getAbility();
+    // const sourceAbility = source.getAbility();
+    let (target_ability_id, source_ability_id) = {
+        let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        let source_pokemon = match battle.pokemon_at(source.0, source.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        (
+            target_pokemon.ability.clone(),
+            source_pokemon.ability.clone(),
+        )
+    };
+
+    // if (target.isAlly(source)) {
+    //     this.add('-activate', source, 'move: Skill Swap', '', '', `[of] ${target}`);
+    // } else {
+    //     this.add('-activate', source, 'move: Skill Swap', targetAbility, sourceAbility, `[of] ${target}`);
+    // }
+    let is_ally = battle.is_ally(target, source);
+
+    let source_arg = {
+        let source_pokemon = match battle.pokemon_at(source.0, source.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        source_pokemon.get_slot()
+    };
+
+    let target_arg = {
+        let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        target_pokemon.get_slot()
+    };
+
+    if is_ally {
+        battle.add(
+            "-activate",
+            &[
+                source_arg.into(),
+                "move: Skill Swap".into(),
+                "".into(),
+                "".into(),
+                format!("[of] {}", target_arg).into(),
+            ],
+        );
+    } else {
+        let target_ability_data = battle.dex.abilities().get_by_id(&target_ability_id);
+        let source_ability_data = battle.dex.abilities().get_by_id(&source_ability_id);
+
+        let target_ability_name = target_ability_data
+            .map(|a| a.name.clone())
+            .unwrap_or_default();
+        let source_ability_name = source_ability_data
+            .map(|a| a.name.clone())
+            .unwrap_or_default();
+
+        battle.add(
+            "-activate",
+            &[
+                source_arg.into(),
+                "move: Skill Swap".into(),
+                target_ability_name.into(),
+                source_ability_name.into(),
+                format!("[of] {}", target_arg).into(),
+            ],
+        );
+    }
+
+    // this.singleEvent('End', sourceAbility, source.abilityState, source);
+    // this.singleEvent('End', targetAbility, target.abilityState, target);
+    let source_ability_effect = battle.make_ability_effect(&source_ability_id);
+    let target_ability_effect = battle.make_ability_effect(&target_ability_id);
+    battle.single_event("End", &source_ability_effect, None, Some(source), None, None, None);
+    battle.single_event("End", &target_ability_effect, None, Some(target), None, None, None);
+
+    // source.ability = targetAbility.id;
+    // target.ability = sourceAbility.id;
+    {
+        let source_pokemon = match battle.pokemon_at_mut(source.0, source.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        source_pokemon.ability = target_ability_id.clone();
+    }
+    {
+        let target_pokemon = match battle.pokemon_at_mut(target.0, target.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        target_pokemon.ability = source_ability_id.clone();
+    }
+
+    // source.abilityState = this.initEffectState({ id: this.toID(source.ability), target: source });
+    // target.abilityState = this.initEffectState({ id: this.toID(target.ability), target });
+    {
+        let source_pokemon = match battle.pokemon_at_mut(source.0, source.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        source_pokemon.ability_state =
+            crate::event_system::SharedEffectState::new(crate::event_system::EffectState::new(target_ability_id.clone()));
+        source_pokemon.ability_state.borrow_mut().target = Some(source);
+    }
+    {
+        let target_pokemon = match battle.pokemon_at_mut(target.0, target.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        target_pokemon.ability_state =
+            crate::event_system::SharedEffectState::new(crate::event_system::EffectState::new(source_ability_id.clone()));
+        target_pokemon.ability_state.borrow_mut().target = Some(target);
+    }
+
+    // source.volatileStaleness = undefined;
+    // if (!target.isAlly(source)) target.volatileStaleness = 'external';
+    {
+        let source_pokemon = match battle.pokemon_at_mut(source.0, source.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        source_pokemon.volatile_staleness = None;
+    }
+    if !is_ally {
+        let target_pokemon = match battle.pokemon_at_mut(target.0, target.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        target_pokemon.volatile_staleness = Some("external".to_string());
+    }
+
+    // this.singleEvent('Start', targetAbility, source.abilityState, source);
+    // this.singleEvent('Start', sourceAbility, target.abilityState, target);
+    let target_ability_effect_start = battle.make_ability_effect(&target_ability_id);
+    let source_ability_effect_start = battle.make_ability_effect(&source_ability_id);
+    battle.single_event("Start", &target_ability_effect_start, None, Some(source), None, None, None);
+    battle.single_event("Start", &source_ability_effect_start, None, Some(target), None, None, None);
+
+    EventResult::Continue
+}

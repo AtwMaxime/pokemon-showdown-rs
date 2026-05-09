@@ -1,0 +1,235 @@
+//! Instruct Move
+//!
+//! Pokemon Showdown - http://pokemonshowdown.com/
+//!
+//! Generated from data/moves.ts
+
+use crate::battle::Battle;
+use crate::event::EventResult;
+
+/// onHit(target, source) {
+///     if (!target.lastMove || target.volatiles['dynamax']) return false;
+///     const lastMove = target.lastMove;
+///     const moveSlot = target.getMoveData(lastMove.id);
+///     if (
+///         lastMove.flags['failinstruct'] || lastMove.isZ || lastMove.isMax ||
+///         lastMove.flags['charge'] || lastMove.flags['recharge'] ||
+///         target.volatiles['beakblast'] || target.volatiles['focuspunch'] || target.volatiles['shelltrap'] ||
+///         (moveSlot && moveSlot.pp <= 0)
+///     ) {
+///         return false;
+///     }
+///     this.add('-singleturn', target, 'move: Instruct', `[of] ${source}`);
+///     this.queue.prioritizeAction(this.queue.resolveAction({
+///         choice: 'move',
+///         pokemon: target,
+///         moveid: target.lastMove.id,
+///         targetLoc: target.lastMoveTargetLoc!,
+///     })[0] as MoveAction);
+/// }
+pub fn on_hit(
+    battle: &mut Battle,
+    target_pos: (usize, usize),  // First param is target
+    source_pos: Option<(usize, usize)>,  // Second param is source
+) -> EventResult {
+    use crate::dex_data::ID;
+
+    let target = target_pos;
+    let source = match source_pos {
+        Some(pos) => pos,
+        None => return EventResult::Continue,
+    };
+
+    // if (!target.lastMove || target.volatiles['dynamax']) return false;
+    // JavaScript uses target.lastMove which is the full ActiveMove with runtime flags
+    // We use last_move_used for the full ActiveMove, last_move for the ID
+    let (last_move_used, last_move_id, has_dynamax) = {
+        let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        (
+            target_pokemon.last_move_used.clone(),
+            target_pokemon.last_move.clone(),
+            target_pokemon.volatiles.contains_key(&ID::from("dynamax")),
+        )
+    };
+
+    // !target.lastMove || target.volatiles['dynamax']
+    if last_move_used.is_none() || has_dynamax {
+        return EventResult::Boolean(false);
+    }
+
+    let last_move_used = last_move_used.unwrap();
+    let last_move_id = last_move_id.unwrap_or_else(|| last_move_used.id.clone());
+
+    // const lastMove = target.lastMove;
+    // const moveSlot = target.getMoveData(lastMove.id);
+    // Check lastMove runtime flags from last_move_used (isZ, isMax)
+    // and dex flags (failinstruct, charge, recharge)
+    let (has_failinstruct, is_z, is_max, has_charge, has_recharge, move_slot_pp) = {
+        let dex_move = battle.dex.moves().get_by_id(&last_move_id);
+        let (has_failinstruct, has_charge, has_recharge) = match dex_move {
+            Some(m) => (
+                m.flags.get("failinstruct").unwrap_or(false),
+                m.flags.get("charge").unwrap_or(false),
+                m.flags.get("recharge").unwrap_or(false),
+            ),
+            None => (false, false, false),
+        };
+
+        // isZ and isMax are runtime flags from the ActiveMove (last_move_used)
+        let is_z = last_move_used.is_z.is_some();
+        let is_max = last_move_used.is_max.is_some();
+
+        let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+
+        // Create ActiveMove from the ID to pass to get_move_data
+        let last_active_move = battle.dex.get_active_move(last_move_id.as_str());
+        let move_slot_pp = last_active_move.as_ref()
+            .and_then(|am| target_pokemon.get_move_data(am))
+            .map(|slot| slot.pp);
+
+        (
+            has_failinstruct,
+            is_z,
+            is_max,
+            has_charge,
+            has_recharge,
+            move_slot_pp,
+        )
+    };
+
+    // if (
+    //     lastMove.flags['failinstruct'] || lastMove.isZ || lastMove.isMax ||
+    //     lastMove.flags['charge'] || lastMove.flags['recharge'] ||
+    //     target.volatiles['beakblast'] || target.volatiles['focuspunch'] || target.volatiles['shelltrap'] ||
+    //     (moveSlot && moveSlot.pp <= 0)
+    // ) {
+    //     return false;
+    // }
+    let has_beakblast = {
+        let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        target_pokemon
+            .volatiles
+            .contains_key(&ID::from("beakblast"))
+    };
+
+    let has_focuspunch = {
+        let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        target_pokemon
+            .volatiles
+            .contains_key(&ID::from("focuspunch"))
+    };
+
+    let has_shelltrap = {
+        let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        target_pokemon
+            .volatiles
+            .contains_key(&ID::from("shelltrap"))
+    };
+
+    if has_failinstruct
+        || is_z
+        || is_max
+        || has_charge
+        || has_recharge
+        || has_beakblast
+        || has_focuspunch
+        || has_shelltrap
+        || (move_slot_pp.is_some() && move_slot_pp.unwrap() == 0)
+    {
+        return EventResult::Boolean(false);
+    }
+
+    // this.add('-singleturn', target, 'move: Instruct', `[of] ${source}`);
+    let target_ident = {
+        let pokemon = match battle.pokemon_at(target.0, target.1) {
+            Some(p) => p,
+
+            None => return EventResult::Continue,
+        };
+
+        pokemon.get_slot()
+    };
+    let source_ident = {
+        let source_pokemon = match battle.pokemon_at(source.0, source.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        source_pokemon.get_slot()
+    };
+    battle.add(
+        "-singleturn",
+        &[
+            target_ident.as_str().into(),
+            "move: Instruct".into(),
+            format!("[of] {}", source_ident).into(),
+        ],
+    );
+
+    // this.queue.prioritizeAction(this.queue.resolveAction({
+    //     choice: 'move',
+    //     pokemon: target,
+    //     moveid: target.lastMove.id,
+    //     targetLoc: target.lastMoveTargetLoc!,
+    // })[0] as MoveAction);
+    let target_loc = {
+        let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        target_pokemon.last_move_target_loc.unwrap_or(0)
+    };
+
+    // Create a MoveAction for the Instruct move
+    use crate::battle_queue::{Action, MoveAction, MoveActionType};
+
+    let move_action = MoveAction {
+        choice: MoveActionType::Move,
+        order: 0, // Will be set by resolve_action/prioritize_action_object
+        priority: 0,
+        fractional_priority: 0.0,
+        speed: 0.0,
+        sub_order: 0,
+        effect_order: 0,
+        pokemon_index: target.1,
+        side_index: target.0,
+        target_loc,
+        original_target: None,
+        move_id: last_move_id,
+        mega: false,
+        zmove: None,
+        max_move: None,
+        source_effect: None,
+        terastallize: None,
+        move_priority_modified: None,
+        prankster_boosted: false,
+    };
+
+    // Resolve the action (handles target resolution, speed calculation, etc.)
+    let actions = crate::battle_queue::BattleQueue::resolve_action(
+        Action::Move(move_action),
+        battle,
+        false,
+    );
+
+    // Prioritize the first resolved action (the main move action)
+    if let Some(action) = actions.into_iter().next() {
+        battle.queue.prioritize_action_object(action);
+    }
+
+    EventResult::Continue
+}

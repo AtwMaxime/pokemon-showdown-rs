@@ -1,0 +1,56 @@
+//! Assurance Move
+//!
+//! Pokemon Showdown - http://pokemonshowdown.com/
+//!
+//! Generated from data/moves.ts
+
+use crate::battle::Battle;
+use crate::event::EventResult;
+
+/// basePowerCallback(pokemon, target, move) {
+///     if (target.hurtThisTurn) {
+///         this.debug('BP doubled on damaged target');
+///         return move.basePower * 2;
+///     }
+///     return move.basePower;
+/// }
+pub fn base_power_callback(
+    battle: &mut Battle,
+    _pokemon_pos: (usize, usize),
+    target_pos: Option<(usize, usize)>,
+) -> EventResult {
+    // Get the target position
+    let target = match target_pos {
+        Some(pos) => pos,
+        None => return EventResult::Continue,
+    };
+
+    // Get the target pokemon
+    let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+        Some(p) => p,
+        None => return EventResult::Continue,
+    };
+
+    // Get the active move
+    let move_id = match &battle.active_move {
+        Some(active_move) => active_move.borrow().id.clone(),
+        None => return EventResult::Continue,
+    };
+
+    // Get the move data and extract base_power before mutable borrow
+    let base_power = match battle.dex.moves().get_by_id(&move_id) {
+        Some(m) => m.base_power,
+        None => return EventResult::Continue,
+    };
+
+    // if (target.hurtThisTurn) {
+    if target_pokemon.hurt_this_turn.is_some() {
+        // this.debug('BP doubled on damaged target');
+        battle.debug("BP doubled on damaged target");
+        // return move.basePower * 2;
+        return EventResult::Number(base_power * 2);
+    }
+
+    // return move.basePower;
+    EventResult::Number(base_power)
+}

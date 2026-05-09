@@ -1,0 +1,2970 @@
+{
+  "noability": {
+    "isNonstandard": "Past",
+    "flags": {},
+    "name": "No Ability",
+    "rating": 0.1,
+    "num": 0
+  },
+  "adaptability": {
+    "flags": {},
+    "name": "Adaptability",
+    "rating": 4,
+    "num": 91,
+    "onModifySTAB": true
+  },
+  "aerilate": {
+    "onModifyTypePriority": -1,
+    "onBasePowerPriority": 23,
+    "flags": {},
+    "name": "Aerilate",
+    "rating": 4,
+    "num": 184,
+    "onModifyType": true,
+    "onBasePower": true
+  },
+  "aftermath": {
+    "onDamagingHitOrder": 1,
+    "flags": {},
+    "name": "Aftermath",
+    "rating": 2,
+    "num": 106,
+    "onDamagingHit": true
+  },
+  "airlock": {
+    "suppressWeather": true,
+    "flags": {},
+    "name": "Air Lock",
+    "rating": 1.5,
+    "num": 76,
+    "onSwitchIn": true,
+    "onStart": true,
+    "onEnd": true
+  },
+  "analytic": {
+    "onBasePowerPriority": 21,
+    "flags": {},
+    "name": "Analytic",
+    "rating": 2.5,
+    "num": 148,
+    "onBasePower": true
+  },
+  "angerpoint": {
+    "flags": {},
+    "name": "Anger Point",
+    "rating": 1,
+    "num": 83,
+    "onHit": true
+  },
+  "angershell": {
+    "flags": {},
+    "name": "Anger Shell",
+    "rating": 3,
+    "num": 271,
+    "onDamage": true,
+    "onTryEatItem": true,
+    "onAfterMoveSecondary": true
+  },
+  "anticipation": {
+    "flags": {},
+    "name": "Anticipation",
+    "rating": 0.5,
+    "num": 107,
+    "onStart": true
+  },
+  "arenatrap": {
+    "flags": {},
+    "name": "Arena Trap",
+    "rating": 5,
+    "num": 71,
+    "onFoeTrapPokemon": true,
+    "onFoeMaybeTrapPokemon": true
+  },
+  "armortail": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Armor Tail",
+    "rating": 2.5,
+    "num": 296,
+    "onFoeTryMove": true
+  },
+  "aromaveil": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Aroma Veil",
+    "rating": 2,
+    "num": 165,
+    "onAllyTryAddVolatile": true
+  },
+  "asoneglastrier": {
+    "onSwitchInPriority": 1,
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "cantsuppress": 1
+    },
+    "name": "As One (Glastrier)",
+    "rating": 3.5,
+    "num": 266,
+    "onStart": true,
+    "onEnd": true,
+    "onFoeTryEatItem": true,
+    "onSourceAfterFaint": true
+  },
+  "asonespectrier": {
+    "onSwitchInPriority": 1,
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "cantsuppress": 1
+    },
+    "name": "As One (Spectrier)",
+    "rating": 3.5,
+    "num": 267,
+    "onStart": true,
+    "onEnd": true,
+    "onFoeTryEatItem": true,
+    "onSourceAfterFaint": true
+  },
+  "aurabreak": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Aura Break",
+    "rating": 1,
+    "num": 188,
+    "onStart": true,
+    "onAnyTryPrimaryHit": true
+  },
+  "baddreams": {
+    "onResidualOrder": 28,
+    "onResidualSubOrder": 2,
+    "flags": {},
+    "name": "Bad Dreams",
+    "rating": 1.5,
+    "num": 123,
+    "onResidual": true
+  },
+  "ballfetch": {
+    "flags": {},
+    "name": "Ball Fetch",
+    "rating": 0,
+    "num": 237
+  },
+  "battery": {
+    "onAllyBasePowerPriority": 22,
+    "flags": {},
+    "name": "Battery",
+    "rating": 0,
+    "num": 217,
+    "onAllyBasePower": true
+  },
+  "battlearmor": {
+    "onCriticalHit": false,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Battle Armor",
+    "rating": 1,
+    "num": 4
+  },
+  "battlebond": {
+    "onModifyMovePriority": -1,
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "cantsuppress": 1
+    },
+    "name": "Battle Bond",
+    "rating": 3.5,
+    "num": 210,
+    "onSourceAfterFaint": true,
+    "onModifyMove": true
+  },
+  "beadsofruin": {
+    "flags": {},
+    "name": "Beads of Ruin",
+    "rating": 4.5,
+    "num": 284,
+    "onStart": true,
+    "onAnyModifySpD": true
+  },
+  "beastboost": {
+    "flags": {},
+    "name": "Beast Boost",
+    "rating": 3.5,
+    "num": 224,
+    "onSourceAfterFaint": true
+  },
+  "berserk": {
+    "flags": {},
+    "name": "Berserk",
+    "rating": 2,
+    "num": 201,
+    "onDamage": true,
+    "onTryEatItem": true,
+    "onAfterMoveSecondary": true
+  },
+  "bigpecks": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Big Pecks",
+    "rating": 0.5,
+    "num": 145,
+    "onTryBoost": true
+  },
+  "blaze": {
+    "onModifyAtkPriority": 5,
+    "onModifySpAPriority": 5,
+    "flags": {},
+    "name": "Blaze",
+    "rating": 2,
+    "num": 66,
+    "onModifyAtk": true,
+    "onModifySpA": true
+  },
+  "bulletproof": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Bulletproof",
+    "rating": 3,
+    "num": 171,
+    "onTryHit": true
+  },
+  "cheekpouch": {
+    "flags": {},
+    "name": "Cheek Pouch",
+    "rating": 2,
+    "num": 167,
+    "onEatItem": true
+  },
+  "chillingneigh": {
+    "flags": {},
+    "name": "Chilling Neigh",
+    "rating": 3,
+    "num": 264,
+    "onSourceAfterFaint": true
+  },
+  "chlorophyll": {
+    "flags": {},
+    "name": "Chlorophyll",
+    "rating": 3,
+    "num": 34,
+    "onModifySpe": true
+  },
+  "clearbody": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Clear Body",
+    "rating": 2,
+    "num": 29,
+    "onTryBoost": true
+  },
+  "cloudnine": {
+    "suppressWeather": true,
+    "flags": {},
+    "name": "Cloud Nine",
+    "rating": 1.5,
+    "num": 13,
+    "onSwitchIn": true,
+    "onStart": true,
+    "onEnd": true
+  },
+  "colorchange": {
+    "flags": {},
+    "name": "Color Change",
+    "rating": 0,
+    "num": 16,
+    "onAfterMoveSecondary": true
+  },
+  "comatose": {
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "cantsuppress": 1
+    },
+    "name": "Comatose",
+    "rating": 4,
+    "num": 213,
+    "onStart": true,
+    "onSetStatus": true
+  },
+  "commander": {
+    "onAnySwitchInPriority": -2,
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1
+    },
+    "name": "Commander",
+    "rating": 0,
+    "num": 279,
+    "onAnySwitchIn": true,
+    "onStart": true,
+    "onUpdate": true
+  },
+  "competitive": {
+    "flags": {},
+    "name": "Competitive",
+    "rating": 2.5,
+    "num": 172,
+    "onAfterEachBoost": true
+  },
+  "compoundeyes": {
+    "onSourceModifyAccuracyPriority": -1,
+    "flags": {},
+    "name": "Compound Eyes",
+    "rating": 3,
+    "num": 14,
+    "onSourceModifyAccuracy": true
+  },
+  "contrary": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Contrary",
+    "rating": 4.5,
+    "num": 126,
+    "onChangeBoost": true
+  },
+  "corrosion": {
+    "flags": {},
+    "name": "Corrosion",
+    "rating": 2.5,
+    "num": 212
+  },
+  "costar": {
+    "onSwitchInPriority": -2,
+    "flags": {},
+    "name": "Costar",
+    "rating": 0,
+    "num": 294,
+    "onStart": true
+  },
+  "cottondown": {
+    "flags": {},
+    "name": "Cotton Down",
+    "rating": 2,
+    "num": 238,
+    "onDamagingHit": true
+  },
+  "cudchew": {
+    "onResidualOrder": 28,
+    "onResidualSubOrder": 2,
+    "flags": {},
+    "name": "Cud Chew",
+    "rating": 2,
+    "num": 291,
+    "onEatItem": true,
+    "onResidual": true
+  },
+  "curiousmedicine": {
+    "flags": {},
+    "name": "Curious Medicine",
+    "rating": 0,
+    "num": 261,
+    "onStart": true
+  },
+  "cursedbody": {
+    "flags": {},
+    "name": "Cursed Body",
+    "rating": 2,
+    "num": 130,
+    "onDamagingHit": true
+  },
+  "cutecharm": {
+    "flags": {},
+    "name": "Cute Charm",
+    "rating": 0.5,
+    "num": 56,
+    "onDamagingHit": true
+  },
+  "damp": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Damp",
+    "rating": 0.5,
+    "num": 6,
+    "onAnyTryMove": true,
+    "onAnyDamage": true
+  },
+  "dancer": {
+    "flags": {},
+    "name": "Dancer",
+    "rating": 1.5,
+    "num": 216
+  },
+  "darkaura": {
+    "onAnyBasePowerPriority": 20,
+    "flags": {},
+    "name": "Dark Aura",
+    "rating": 3,
+    "num": 186,
+    "onStart": true,
+    "onAnyBasePower": true
+  },
+  "dauntlessshield": {
+    "flags": {},
+    "name": "Dauntless Shield",
+    "rating": 3.5,
+    "num": 235,
+    "onStart": true
+  },
+  "dazzling": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Dazzling",
+    "rating": 2.5,
+    "num": 219,
+    "onFoeTryMove": true
+  },
+  "defeatist": {
+    "onModifyAtkPriority": 5,
+    "onModifySpAPriority": 5,
+    "flags": {},
+    "name": "Defeatist",
+    "rating": -1,
+    "num": 129,
+    "onModifyAtk": true,
+    "onModifySpA": true
+  },
+  "defiant": {
+    "flags": {},
+    "name": "Defiant",
+    "rating": 3,
+    "num": 128,
+    "onAfterEachBoost": true
+  },
+  "deltastream": {
+    "flags": {},
+    "name": "Delta Stream",
+    "rating": 4,
+    "num": 191,
+    "onStart": true,
+    "onAnySetWeather": true,
+    "onEnd": true
+  },
+  "desolateland": {
+    "flags": {},
+    "name": "Desolate Land",
+    "rating": 4.5,
+    "num": 190,
+    "onStart": true,
+    "onAnySetWeather": true,
+    "onEnd": true
+  },
+  "disguise": {
+    "onDamagePriority": 1,
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "cantsuppress": 1,
+      "breakable": 1,
+      "notransform": 1
+    },
+    "name": "Disguise",
+    "rating": 3.5,
+    "num": 209,
+    "onDamage": true,
+    "onCriticalHit": true,
+    "onEffectiveness": true,
+    "onUpdate": true
+  },
+  "download": {
+    "flags": {},
+    "name": "Download",
+    "rating": 3.5,
+    "num": 88,
+    "onStart": true
+  },
+  "dragonsmaw": {
+    "onModifyAtkPriority": 5,
+    "onModifySpAPriority": 5,
+    "flags": {},
+    "name": "Dragon's Maw",
+    "rating": 3.5,
+    "num": 263,
+    "onModifyAtk": true,
+    "onModifySpA": true
+  },
+  "drizzle": {
+    "flags": {},
+    "name": "Drizzle",
+    "rating": 4,
+    "num": 2,
+    "onStart": true
+  },
+  "drought": {
+    "flags": {},
+    "name": "Drought",
+    "rating": 4,
+    "num": 70,
+    "onStart": true
+  },
+  "dryskin": {
+    "onSourceBasePowerPriority": 17,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Dry Skin",
+    "rating": 3,
+    "num": 87,
+    "onTryHit": true,
+    "onSourceBasePower": true,
+    "onWeather": true
+  },
+  "earlybird": {
+    "flags": {},
+    "name": "Early Bird",
+    "rating": 1.5,
+    "num": 48
+  },
+  "eartheater": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Earth Eater",
+    "rating": 3.5,
+    "num": 297,
+    "onTryHit": true
+  },
+  "effectspore": {
+    "flags": {},
+    "name": "Effect Spore",
+    "rating": 2,
+    "num": 27,
+    "onDamagingHit": true
+  },
+  "electricsurge": {
+    "flags": {},
+    "name": "Electric Surge",
+    "rating": 4,
+    "num": 226,
+    "onStart": true
+  },
+  "electromorphosis": {
+    "onDamagingHitOrder": 1,
+    "flags": {},
+    "name": "Electromorphosis",
+    "rating": 3,
+    "num": 280,
+    "onDamagingHit": true
+  },
+  "embodyaspectcornerstone": {
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "notransform": 1
+    },
+    "name": "Embody Aspect (Cornerstone)",
+    "rating": 3.5,
+    "num": 304,
+    "onStart": true
+  },
+  "embodyaspecthearthflame": {
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "notransform": 1
+    },
+    "name": "Embody Aspect (Hearthflame)",
+    "rating": 3.5,
+    "num": 303,
+    "onStart": true
+  },
+  "embodyaspectteal": {
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "notransform": 1
+    },
+    "name": "Embody Aspect (Teal)",
+    "rating": 3.5,
+    "num": 301,
+    "onStart": true
+  },
+  "embodyaspectwellspring": {
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "notransform": 1
+    },
+    "name": "Embody Aspect (Wellspring)",
+    "rating": 3.5,
+    "num": 302,
+    "onStart": true
+  },
+  "emergencyexit": {
+    "flags": {},
+    "name": "Emergency Exit",
+    "rating": 1,
+    "num": 194,
+    "onEmergencyExit": true
+  },
+  "fairyaura": {
+    "onAnyBasePowerPriority": 20,
+    "flags": {},
+    "name": "Fairy Aura",
+    "rating": 3,
+    "num": 187,
+    "onStart": true,
+    "onAnyBasePower": true
+  },
+  "filter": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Filter",
+    "rating": 3,
+    "num": 111,
+    "onSourceModifyDamage": true
+  },
+  "flamebody": {
+    "flags": {},
+    "name": "Flame Body",
+    "rating": 2,
+    "num": 49,
+    "onDamagingHit": true
+  },
+  "flareboost": {
+    "onBasePowerPriority": 19,
+    "flags": {},
+    "name": "Flare Boost",
+    "rating": 2,
+    "num": 138,
+    "onBasePower": true
+  },
+  "flashfire": {
+    "condition": {
+      "noCopy": true,
+      "onModifyAtkPriority": 5,
+      "onModifySpAPriority": 5
+    },
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Flash Fire",
+    "rating": 3.5,
+    "num": 18,
+    "onTryHit": true,
+    "onEnd": true
+  },
+  "flowergift": {
+    "onSwitchInPriority": -2,
+    "onAllyModifyAtkPriority": 3,
+    "onAllyModifySpDPriority": 4,
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "breakable": 1
+    },
+    "name": "Flower Gift",
+    "rating": 1,
+    "num": 122,
+    "onStart": true,
+    "onWeatherChange": true,
+    "onAllyModifyAtk": true,
+    "onAllyModifySpD": true
+  },
+  "flowerveil": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Flower Veil",
+    "rating": 0,
+    "num": 166,
+    "onAllyTryBoost": true,
+    "onAllySetStatus": true,
+    "onAllyTryAddVolatile": true
+  },
+  "fluffy": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Fluffy",
+    "rating": 3.5,
+    "num": 218,
+    "onSourceModifyDamage": true
+  },
+  "forecast": {
+    "onSwitchInPriority": -2,
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1
+    },
+    "name": "Forecast",
+    "rating": 2,
+    "num": 59,
+    "onStart": true,
+    "onWeatherChange": true
+  },
+  "forewarn": {
+    "flags": {},
+    "name": "Forewarn",
+    "rating": 0.5,
+    "num": 108,
+    "onStart": true
+  },
+  "friendguard": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Friend Guard",
+    "rating": 0,
+    "num": 132,
+    "onAnyModifyDamage": true
+  },
+  "frisk": {
+    "flags": {},
+    "name": "Frisk",
+    "rating": 1.5,
+    "num": 119,
+    "onStart": true
+  },
+  "fullmetalbody": {
+    "flags": {},
+    "name": "Full Metal Body",
+    "rating": 2,
+    "num": 230,
+    "onTryBoost": true
+  },
+  "furcoat": {
+    "onModifyDefPriority": 6,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Fur Coat",
+    "rating": 4,
+    "num": 169,
+    "onModifyDef": true
+  },
+  "galewings": {
+    "flags": {},
+    "name": "Gale Wings",
+    "rating": 1.5,
+    "num": 177,
+    "onModifyPriority": true
+  },
+  "galvanize": {
+    "onModifyTypePriority": -1,
+    "onBasePowerPriority": 23,
+    "flags": {},
+    "name": "Galvanize",
+    "rating": 4,
+    "num": 206,
+    "onModifyType": true,
+    "onBasePower": true
+  },
+  "gluttony": {
+    "flags": {},
+    "name": "Gluttony",
+    "rating": 1.5,
+    "num": 82,
+    "onStart": true,
+    "onDamage": true
+  },
+  "goodasgold": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Good as Gold",
+    "rating": 5,
+    "num": 283,
+    "onTryHit": true
+  },
+  "gooey": {
+    "flags": {},
+    "name": "Gooey",
+    "rating": 2,
+    "num": 183,
+    "onDamagingHit": true
+  },
+  "gorillatactics": {
+    "onModifyAtkPriority": 1,
+    "flags": {},
+    "name": "Gorilla Tactics",
+    "rating": 4.5,
+    "num": 255,
+    "onStart": true,
+    "onBeforeMove": true,
+    "onModifyMove": true,
+    "onModifyAtk": true,
+    "onDisableMove": true,
+    "onEnd": true
+  },
+  "grasspelt": {
+    "onModifyDefPriority": 6,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Grass Pelt",
+    "rating": 0.5,
+    "num": 179,
+    "onModifyDef": true
+  },
+  "grassysurge": {
+    "flags": {},
+    "name": "Grassy Surge",
+    "rating": 4,
+    "num": 229,
+    "onStart": true
+  },
+  "grimneigh": {
+    "flags": {},
+    "name": "Grim Neigh",
+    "rating": 3,
+    "num": 265,
+    "onSourceAfterFaint": true
+  },
+  "guarddog": {
+    "onDragOutPriority": 1,
+    "onTryBoostPriority": 2,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Guard Dog",
+    "rating": 2,
+    "num": 275,
+    "onDragOut": true,
+    "onTryBoost": true
+  },
+  "gulpmissile": {
+    "flags": {
+      "cantsuppress": 1,
+      "notransform": 1
+    },
+    "name": "Gulp Missile",
+    "rating": 2.5,
+    "num": 241,
+    "onDamagingHit": true,
+    "onSourceTryPrimaryHit": true
+  },
+  "guts": {
+    "onModifyAtkPriority": 5,
+    "flags": {},
+    "name": "Guts",
+    "rating": 3.5,
+    "num": 62,
+    "onModifyAtk": true
+  },
+  "hadronengine": {
+    "onModifySpAPriority": 5,
+    "flags": {},
+    "name": "Hadron Engine",
+    "rating": 4.5,
+    "num": 289,
+    "onStart": true,
+    "onModifySpA": true
+  },
+  "harvest": {
+    "onResidualOrder": 28,
+    "onResidualSubOrder": 2,
+    "flags": {},
+    "name": "Harvest",
+    "rating": 2.5,
+    "num": 139,
+    "onResidual": true
+  },
+  "healer": {
+    "onResidualOrder": 5,
+    "onResidualSubOrder": 3,
+    "flags": {},
+    "name": "Healer",
+    "rating": 0,
+    "num": 131,
+    "onResidual": true
+  },
+  "heatproof": {
+    "onSourceModifyAtkPriority": 6,
+    "onSourceModifySpAPriority": 5,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Heatproof",
+    "rating": 2,
+    "num": 85,
+    "onSourceModifyAtk": true,
+    "onSourceModifySpA": true,
+    "onDamage": true
+  },
+  "heavymetal": {
+    "onModifyWeightPriority": 1,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Heavy Metal",
+    "rating": 0,
+    "num": 134,
+    "onModifyWeight": true
+  },
+  "honeygather": {
+    "flags": {},
+    "name": "Honey Gather",
+    "rating": 0,
+    "num": 118
+  },
+  "hospitality": {
+    "onSwitchInPriority": -2,
+    "flags": {},
+    "name": "Hospitality",
+    "rating": 0,
+    "num": 299,
+    "onStart": true
+  },
+  "hugepower": {
+    "onModifyAtkPriority": 5,
+    "flags": {},
+    "name": "Huge Power",
+    "rating": 5,
+    "num": 37,
+    "onModifyAtk": true
+  },
+  "hungerswitch": {
+    "onResidualOrder": 29,
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "notransform": 1
+    },
+    "name": "Hunger Switch",
+    "rating": 1,
+    "num": 258,
+    "onResidual": true
+  },
+  "hustle": {
+    "onModifyAtkPriority": 5,
+    "onSourceModifyAccuracyPriority": -1,
+    "flags": {},
+    "name": "Hustle",
+    "rating": 3.5,
+    "num": 55,
+    "onModifyAtk": true,
+    "onSourceModifyAccuracy": true
+  },
+  "hydration": {
+    "onResidualOrder": 5,
+    "onResidualSubOrder": 3,
+    "flags": {},
+    "name": "Hydration",
+    "rating": 1.5,
+    "num": 93,
+    "onResidual": true
+  },
+  "hypercutter": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Hyper Cutter",
+    "rating": 1.5,
+    "num": 52,
+    "onTryBoost": true
+  },
+  "icebody": {
+    "flags": {},
+    "name": "Ice Body",
+    "rating": 1,
+    "num": 115,
+    "onWeather": true,
+    "onImmunity": true
+  },
+  "iceface": {
+    "onSwitchInPriority": -2,
+    "onDamagePriority": 1,
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "cantsuppress": 1,
+      "breakable": 1,
+      "notransform": 1
+    },
+    "name": "Ice Face",
+    "rating": 3,
+    "num": 248,
+    "onStart": true,
+    "onDamage": true,
+    "onCriticalHit": true,
+    "onEffectiveness": true,
+    "onUpdate": true,
+    "onWeatherChange": true
+  },
+  "icescales": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Ice Scales",
+    "rating": 4,
+    "num": 246,
+    "onSourceModifyDamage": true
+  },
+  "illuminate": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Illuminate",
+    "rating": 0.5,
+    "num": 35,
+    "onTryBoost": true,
+    "onModifyMove": true
+  },
+  "illusion": {
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1
+    },
+    "name": "Illusion",
+    "rating": 4.5,
+    "num": 149,
+    "onBeforeSwitchIn": true,
+    "onDamagingHit": true,
+    "onEnd": true,
+    "onFaint": true
+  },
+  "immunity": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Immunity",
+    "rating": 2,
+    "num": 17,
+    "onUpdate": true,
+    "onSetStatus": true
+  },
+  "imposter": {
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1
+    },
+    "name": "Imposter",
+    "rating": 5,
+    "num": 150,
+    "onSwitchIn": true
+  },
+  "infiltrator": {
+    "flags": {},
+    "name": "Infiltrator",
+    "rating": 2.5,
+    "num": 151,
+    "onModifyMove": true
+  },
+  "innardsout": {
+    "onDamagingHitOrder": 1,
+    "flags": {},
+    "name": "Innards Out",
+    "rating": 4,
+    "num": 215,
+    "onDamagingHit": true
+  },
+  "innerfocus": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Inner Focus",
+    "rating": 1,
+    "num": 39,
+    "onTryAddVolatile": true,
+    "onTryBoost": true
+  },
+  "insomnia": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Insomnia",
+    "rating": 1.5,
+    "num": 15,
+    "onUpdate": true,
+    "onSetStatus": true,
+    "onTryAddVolatile": true
+  },
+  "intimidate": {
+    "flags": {},
+    "name": "Intimidate",
+    "rating": 3.5,
+    "num": 22,
+    "onStart": true
+  },
+  "intrepidsword": {
+    "flags": {},
+    "name": "Intrepid Sword",
+    "rating": 4,
+    "num": 234,
+    "onStart": true
+  },
+  "ironbarbs": {
+    "onDamagingHitOrder": 1,
+    "flags": {},
+    "name": "Iron Barbs",
+    "rating": 2.5,
+    "num": 160,
+    "onDamagingHit": true
+  },
+  "ironfist": {
+    "onBasePowerPriority": 23,
+    "flags": {},
+    "name": "Iron Fist",
+    "rating": 3,
+    "num": 89,
+    "onBasePower": true
+  },
+  "justified": {
+    "flags": {},
+    "name": "Justified",
+    "rating": 2.5,
+    "num": 154,
+    "onDamagingHit": true
+  },
+  "keeneye": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Keen Eye",
+    "rating": 0.5,
+    "num": 51,
+    "onTryBoost": true,
+    "onModifyMove": true
+  },
+  "klutz": {
+    "onSwitchInPriority": 1,
+    "flags": {},
+    "name": "Klutz",
+    "rating": -1,
+    "num": 103,
+    "onStart": true
+  },
+  "leafguard": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Leaf Guard",
+    "rating": 0.5,
+    "num": 102,
+    "onSetStatus": true,
+    "onTryAddVolatile": true
+  },
+  "levitate": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Levitate",
+    "rating": 3.5,
+    "num": 26
+  },
+  "libero": {
+    "flags": {},
+    "name": "Libero",
+    "rating": 4,
+    "num": 236,
+    "onPrepareHit": true
+  },
+  "lightmetal": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Light Metal",
+    "rating": 1,
+    "num": 135,
+    "onModifyWeight": true
+  },
+  "lightningrod": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Lightning Rod",
+    "rating": 3,
+    "num": 31,
+    "onTryHit": true,
+    "onAnyRedirectTarget": true
+  },
+  "limber": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Limber",
+    "rating": 2,
+    "num": 7,
+    "onUpdate": true,
+    "onSetStatus": true
+  },
+  "lingeringaroma": {
+    "flags": {},
+    "name": "Lingering Aroma",
+    "rating": 2,
+    "num": 268,
+    "onDamagingHit": true
+  },
+  "liquidooze": {
+    "flags": {},
+    "name": "Liquid Ooze",
+    "rating": 2.5,
+    "num": 64,
+    "onSourceTryHeal": true
+  },
+  "liquidvoice": {
+    "onModifyTypePriority": -1,
+    "flags": {},
+    "name": "Liquid Voice",
+    "rating": 1.5,
+    "num": 204,
+    "onModifyType": true
+  },
+  "longreach": {
+    "flags": {},
+    "name": "Long Reach",
+    "rating": 1,
+    "num": 203,
+    "onModifyMove": true
+  },
+  "magicbounce": {
+    "onTryHitPriority": 1,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Magic Bounce",
+    "rating": 4,
+    "num": 156,
+    "onTryHit": true,
+    "onAllyTryHitSide": true
+  },
+  "magicguard": {
+    "flags": {},
+    "name": "Magic Guard",
+    "rating": 4,
+    "num": 98,
+    "onDamage": true
+  },
+  "magician": {
+    "flags": {},
+    "name": "Magician",
+    "rating": 1,
+    "num": 170,
+    "onAfterMoveSecondarySelf": true
+  },
+  "magmaarmor": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Magma Armor",
+    "rating": 0.5,
+    "num": 40,
+    "onUpdate": true,
+    "onImmunity": true
+  },
+  "magnetpull": {
+    "flags": {},
+    "name": "Magnet Pull",
+    "rating": 4,
+    "num": 42,
+    "onFoeTrapPokemon": true,
+    "onFoeMaybeTrapPokemon": true
+  },
+  "marvelscale": {
+    "onModifyDefPriority": 6,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Marvel Scale",
+    "rating": 2.5,
+    "num": 63,
+    "onModifyDef": true
+  },
+  "megalauncher": {
+    "onBasePowerPriority": 19,
+    "flags": {},
+    "name": "Mega Launcher",
+    "rating": 3,
+    "num": 178,
+    "onBasePower": true
+  },
+  "merciless": {
+    "flags": {},
+    "name": "Merciless",
+    "rating": 1.5,
+    "num": 196,
+    "onModifyCritRatio": true
+  },
+  "mimicry": {
+    "onSwitchInPriority": -1,
+    "flags": {},
+    "name": "Mimicry",
+    "rating": 0,
+    "num": 250,
+    "onStart": true,
+    "onTerrainChange": true
+  },
+  "mindseye": {
+    "onModifyMovePriority": -5,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Mind's Eye",
+    "rating": 0,
+    "num": 300,
+    "onTryBoost": true,
+    "onModifyMove": true
+  },
+  "minus": {
+    "onModifySpAPriority": 5,
+    "flags": {},
+    "name": "Minus",
+    "rating": 0,
+    "num": 58,
+    "onModifySpA": true
+  },
+  "mirrorarmor": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Mirror Armor",
+    "rating": 2,
+    "num": 240,
+    "onTryBoost": true
+  },
+  "mistysurge": {
+    "flags": {},
+    "name": "Misty Surge",
+    "rating": 3.5,
+    "num": 228,
+    "onStart": true
+  },
+  "moldbreaker": {
+    "flags": {},
+    "name": "Mold Breaker",
+    "rating": 3,
+    "num": 104,
+    "onStart": true,
+    "onModifyMove": true
+  },
+  "moody": {
+    "onResidualOrder": 28,
+    "onResidualSubOrder": 2,
+    "flags": {},
+    "name": "Moody",
+    "rating": 5,
+    "num": 141,
+    "onResidual": true
+  },
+  "motordrive": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Motor Drive",
+    "rating": 3,
+    "num": 78,
+    "onTryHit": true
+  },
+  "moxie": {
+    "flags": {},
+    "name": "Moxie",
+    "rating": 3,
+    "num": 153,
+    "onSourceAfterFaint": true
+  },
+  "multiscale": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Multiscale",
+    "rating": 3.5,
+    "num": 136,
+    "onSourceModifyDamage": true
+  },
+  "multitype": {
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "cantsuppress": 1
+    },
+    "name": "Multitype",
+    "rating": 4,
+    "num": 121
+  },
+  "mummy": {
+    "flags": {},
+    "name": "Mummy",
+    "rating": 2,
+    "num": 152,
+    "onDamagingHit": true
+  },
+  "myceliummight": {
+    "onFractionalPriorityPriority": -1,
+    "flags": {},
+    "name": "Mycelium Might",
+    "rating": 2,
+    "num": 298,
+    "onFractionalPriority": true,
+    "onModifyMove": true
+  },
+  "naturalcure": {
+    "flags": {},
+    "name": "Natural Cure",
+    "rating": 2.5,
+    "num": 30,
+    "onCheckShow": true,
+    "onSwitchOut": true
+  },
+  "neuroforce": {
+    "flags": {},
+    "name": "Neuroforce",
+    "rating": 2.5,
+    "num": 233,
+    "onModifyDamage": true
+  },
+  "neutralizinggas": {
+    "onSwitchInPriority": 2,
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "notransform": 1
+    },
+    "name": "Neutralizing Gas",
+    "rating": 3.5,
+    "num": 256,
+    "onSwitchIn": true,
+    "onEnd": true
+  },
+  "noguard": {
+    "onAnyInvulnerabilityPriority": 1,
+    "flags": {},
+    "name": "No Guard",
+    "rating": 4,
+    "num": 99,
+    "onAnyInvulnerability": true,
+    "onAnyAccuracy": true
+  },
+  "normalize": {
+    "onModifyTypePriority": 1,
+    "onBasePowerPriority": 23,
+    "flags": {},
+    "name": "Normalize",
+    "rating": 0,
+    "num": 96,
+    "onModifyType": true,
+    "onBasePower": true
+  },
+  "oblivious": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Oblivious",
+    "rating": 1.5,
+    "num": 12,
+    "onUpdate": true,
+    "onImmunity": true,
+    "onTryHit": true,
+    "onTryBoost": true
+  },
+  "opportunist": {
+    "onAnySwitchInPriority": -3,
+    "onResidualOrder": 29,
+    "flags": {},
+    "name": "Opportunist",
+    "rating": 3,
+    "num": 290,
+    "onFoeAfterBoost": true,
+    "onAnySwitchIn": true,
+    "onAnyAfterMega": true,
+    "onAnyAfterTerastallization": true,
+    "onAnyAfterMove": true,
+    "onResidual": true,
+    "onEnd": true
+  },
+  "orichalcumpulse": {
+    "onModifyAtkPriority": 5,
+    "flags": {},
+    "name": "Orichalcum Pulse",
+    "rating": 4.5,
+    "num": 288,
+    "onStart": true,
+    "onModifyAtk": true
+  },
+  "overcoat": {
+    "onTryHitPriority": 1,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Overcoat",
+    "rating": 2,
+    "num": 142,
+    "onImmunity": true,
+    "onTryHit": true
+  },
+  "overgrow": {
+    "onModifyAtkPriority": 5,
+    "onModifySpAPriority": 5,
+    "flags": {},
+    "name": "Overgrow",
+    "rating": 2,
+    "num": 65,
+    "onModifyAtk": true,
+    "onModifySpA": true
+  },
+  "owntempo": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Own Tempo",
+    "rating": 1.5,
+    "num": 20,
+    "onUpdate": true,
+    "onTryAddVolatile": true,
+    "onHit": true,
+    "onTryBoost": true
+  },
+  "parentalbond": {
+    "flags": {},
+    "name": "Parental Bond",
+    "rating": 4.5,
+    "num": 185,
+    "onPrepareHit": true,
+    "onSourceModifySecondaries": true
+  },
+  "pastelveil": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Pastel Veil",
+    "rating": 2,
+    "num": 257,
+    "onStart": true,
+    "onUpdate": true,
+    "onAnySwitchIn": true,
+    "onSetStatus": true,
+    "onAllySetStatus": true
+  },
+  "perishbody": {
+    "flags": {},
+    "name": "Perish Body",
+    "rating": 1,
+    "num": 253,
+    "onDamagingHit": true
+  },
+  "pickpocket": {
+    "flags": {},
+    "name": "Pickpocket",
+    "rating": 1,
+    "num": 124,
+    "onAfterMoveSecondary": true
+  },
+  "pickup": {
+    "onResidualOrder": 28,
+    "onResidualSubOrder": 2,
+    "flags": {},
+    "name": "Pickup",
+    "rating": 0.5,
+    "num": 53,
+    "onResidual": true
+  },
+  "pixilate": {
+    "onModifyTypePriority": -1,
+    "onBasePowerPriority": 23,
+    "flags": {},
+    "name": "Pixilate",
+    "rating": 4,
+    "num": 182,
+    "onModifyType": true,
+    "onBasePower": true
+  },
+  "plus": {
+    "onModifySpAPriority": 5,
+    "flags": {},
+    "name": "Plus",
+    "rating": 0,
+    "num": 57,
+    "onModifySpA": true
+  },
+  "poisonheal": {
+    "onDamagePriority": 1,
+    "flags": {},
+    "name": "Poison Heal",
+    "rating": 4,
+    "num": 90,
+    "onDamage": true
+  },
+  "poisonpoint": {
+    "flags": {},
+    "name": "Poison Point",
+    "rating": 1.5,
+    "num": 38,
+    "onDamagingHit": true
+  },
+  "poisonpuppeteer": {
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1
+    },
+    "name": "Poison Puppeteer",
+    "rating": 3,
+    "num": 310,
+    "onAnyAfterSetStatus": true
+  },
+  "poisontouch": {
+    "flags": {},
+    "name": "Poison Touch",
+    "rating": 2,
+    "num": 143,
+    "onSourceDamagingHit": true
+  },
+  "powerconstruct": {
+    "onResidualOrder": 29,
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "cantsuppress": 1
+    },
+    "name": "Power Construct",
+    "rating": 5,
+    "num": 211,
+    "onResidual": true
+  },
+  "powerofalchemy": {
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1
+    },
+    "name": "Power of Alchemy",
+    "rating": 0,
+    "num": 223,
+    "onAllyFaint": true
+  },
+  "powerspot": {
+    "onAllyBasePowerPriority": 22,
+    "flags": {},
+    "name": "Power Spot",
+    "rating": 0,
+    "num": 249,
+    "onAllyBasePower": true
+  },
+  "prankster": {
+    "flags": {},
+    "name": "Prankster",
+    "rating": 4,
+    "num": 158,
+    "onModifyPriority": true
+  },
+  "pressure": {
+    "flags": {},
+    "name": "Pressure",
+    "rating": 2.5,
+    "num": 46,
+    "onStart": true,
+    "onDeductPP": true
+  },
+  "primordialsea": {
+    "flags": {},
+    "name": "Primordial Sea",
+    "rating": 4.5,
+    "num": 189,
+    "onStart": true,
+    "onAnySetWeather": true,
+    "onEnd": true
+  },
+  "prismarmor": {
+    "flags": {},
+    "name": "Prism Armor",
+    "rating": 3,
+    "num": 232,
+    "onSourceModifyDamage": true
+  },
+  "propellertail": {
+    "onModifyMovePriority": 1,
+    "flags": {},
+    "name": "Propeller Tail",
+    "rating": 0,
+    "num": 239,
+    "onModifyMove": true
+  },
+  "protean": {
+    "flags": {},
+    "name": "Protean",
+    "rating": 4,
+    "num": 168,
+    "onPrepareHit": true
+  },
+  "protosynthesis": {
+    "onSwitchInPriority": -2,
+    "condition": {
+      "noCopy": true,
+      "onStart": true,
+      "onModifyAtkPriority": 5,
+      "onModifyAtk": true,
+      "onModifyDefPriority": 6,
+      "onModifyDef": true,
+      "onModifySpAPriority": 5,
+      "onModifySpA": true,
+      "onModifySpDPriority": 6,
+      "onModifySpD": true,
+      "onModifySpe": true,
+      "onEnd": true
+    },
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "notransform": 1
+    },
+    "name": "Protosynthesis",
+    "rating": 3,
+    "num": 281,
+    "onStart": true,
+    "onWeatherChange": true,
+    "onEnd": true
+  },
+  "psychicsurge": {
+    "flags": {},
+    "name": "Psychic Surge",
+    "rating": 4,
+    "num": 227,
+    "onStart": true
+  },
+  "punkrock": {
+    "onBasePowerPriority": 7,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Punk Rock",
+    "rating": 3.5,
+    "num": 244,
+    "onBasePower": true,
+    "onSourceModifyDamage": true
+  },
+  "purepower": {
+    "onModifyAtkPriority": 5,
+    "flags": {},
+    "name": "Pure Power",
+    "rating": 5,
+    "num": 74,
+    "onModifyAtk": true
+  },
+  "purifyingsalt": {
+    "onSourceModifyAtkPriority": 6,
+    "onSourceModifySpAPriority": 5,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Purifying Salt",
+    "rating": 4,
+    "num": 272,
+    "onSetStatus": true,
+    "onTryAddVolatile": true,
+    "onSourceModifyAtk": true,
+    "onSourceModifySpA": true
+  },
+  "quarkdrive": {
+    "onSwitchInPriority": -2,
+    "condition": {
+      "noCopy": true,
+      "onStart": true,
+      "onModifyAtkPriority": 5,
+      "onModifyAtk": true,
+      "onModifyDefPriority": 6,
+      "onModifyDef": true,
+      "onModifySpAPriority": 5,
+      "onModifySpA": true,
+      "onModifySpDPriority": 6,
+      "onModifySpD": true,
+      "onModifySpe": true,
+      "onEnd": true
+    },
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "notransform": 1
+    },
+    "name": "Quark Drive",
+    "rating": 3,
+    "num": 282,
+    "onStart": true,
+    "onTerrainChange": true,
+    "onEnd": true
+  },
+  "queenlymajesty": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Queenly Majesty",
+    "rating": 2.5,
+    "num": 214,
+    "onFoeTryMove": true
+  },
+  "quickdraw": {
+    "onFractionalPriorityPriority": -1,
+    "flags": {},
+    "name": "Quick Draw",
+    "rating": 2.5,
+    "num": 259,
+    "onFractionalPriority": true
+  },
+  "quickfeet": {
+    "flags": {},
+    "name": "Quick Feet",
+    "rating": 2.5,
+    "num": 95,
+    "onModifySpe": true
+  },
+  "raindish": {
+    "flags": {},
+    "name": "Rain Dish",
+    "rating": 1.5,
+    "num": 44,
+    "onWeather": true
+  },
+  "rattled": {
+    "flags": {},
+    "name": "Rattled",
+    "rating": 1,
+    "num": 155,
+    "onDamagingHit": true,
+    "onAfterBoost": true
+  },
+  "receiver": {
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1
+    },
+    "name": "Receiver",
+    "rating": 0,
+    "num": 222,
+    "onAllyFaint": true
+  },
+  "reckless": {
+    "onBasePowerPriority": 23,
+    "flags": {},
+    "name": "Reckless",
+    "rating": 3,
+    "num": 120,
+    "onBasePower": true
+  },
+  "refrigerate": {
+    "onModifyTypePriority": -1,
+    "onBasePowerPriority": 23,
+    "flags": {},
+    "name": "Refrigerate",
+    "rating": 4,
+    "num": 174,
+    "onModifyType": true,
+    "onBasePower": true
+  },
+  "regenerator": {
+    "flags": {},
+    "name": "Regenerator",
+    "rating": 4.5,
+    "num": 144,
+    "onSwitchOut": true
+  },
+  "ripen": {
+    "onSourceModifyDamagePriority": -1,
+    "onTryEatItemPriority": -1,
+    "flags": {},
+    "name": "Ripen",
+    "rating": 2,
+    "num": 247,
+    "onTryHeal": true,
+    "onChangeBoost": true,
+    "onSourceModifyDamage": true,
+    "onTryEatItem": true,
+    "onEatItem": true
+  },
+  "rivalry": {
+    "onBasePowerPriority": 24,
+    "flags": {},
+    "name": "Rivalry",
+    "rating": 0,
+    "num": 79,
+    "onBasePower": true
+  },
+  "rkssystem": {
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "cantsuppress": 1
+    },
+    "name": "RKS System",
+    "rating": 4,
+    "num": 225
+  },
+  "rockhead": {
+    "flags": {},
+    "name": "Rock Head",
+    "rating": 3,
+    "num": 69,
+    "onDamage": true
+  },
+  "rockypayload": {
+    "onModifyAtkPriority": 5,
+    "onModifySpAPriority": 5,
+    "flags": {},
+    "name": "Rocky Payload",
+    "rating": 3.5,
+    "num": 276,
+    "onModifyAtk": true,
+    "onModifySpA": true
+  },
+  "roughskin": {
+    "onDamagingHitOrder": 1,
+    "flags": {},
+    "name": "Rough Skin",
+    "rating": 2.5,
+    "num": 24,
+    "onDamagingHit": true
+  },
+  "runaway": {
+    "flags": {},
+    "name": "Run Away",
+    "rating": 0,
+    "num": 50
+  },
+  "sandforce": {
+    "onBasePowerPriority": 21,
+    "flags": {},
+    "name": "Sand Force",
+    "rating": 2,
+    "num": 159,
+    "onBasePower": true,
+    "onImmunity": true
+  },
+  "sandrush": {
+    "flags": {},
+    "name": "Sand Rush",
+    "rating": 3,
+    "num": 146,
+    "onModifySpe": true,
+    "onImmunity": true
+  },
+  "sandspit": {
+    "flags": {},
+    "name": "Sand Spit",
+    "rating": 1,
+    "num": 245,
+    "onDamagingHit": true
+  },
+  "sandstream": {
+    "flags": {},
+    "name": "Sand Stream",
+    "rating": 4,
+    "num": 45,
+    "onStart": true
+  },
+  "sandveil": {
+    "onModifyAccuracyPriority": -1,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Sand Veil",
+    "rating": 1.5,
+    "num": 8,
+    "onImmunity": true,
+    "onModifyAccuracy": true
+  },
+  "sapsipper": {
+    "onTryHitPriority": 1,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Sap Sipper",
+    "rating": 3,
+    "num": 157,
+    "onTryHit": true,
+    "onAllyTryHitSide": true
+  },
+  "schooling": {
+    "onSwitchInPriority": -1,
+    "onResidualOrder": 29,
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "cantsuppress": 1
+    },
+    "name": "Schooling",
+    "rating": 3,
+    "num": 208,
+    "onStart": true,
+    "onResidual": true
+  },
+  "scrappy": {
+    "onModifyMovePriority": -5,
+    "flags": {},
+    "name": "Scrappy",
+    "rating": 3,
+    "num": 113,
+    "onModifyMove": true,
+    "onTryBoost": true
+  },
+  "screencleaner": {
+    "flags": {},
+    "name": "Screen Cleaner",
+    "rating": 2,
+    "num": 251,
+    "onStart": true
+  },
+  "seedsower": {
+    "flags": {},
+    "name": "Seed Sower",
+    "rating": 2.5,
+    "num": 269,
+    "onDamagingHit": true
+  },
+  "serenegrace": {
+    "onModifyMovePriority": -2,
+    "flags": {},
+    "name": "Serene Grace",
+    "rating": 3.5,
+    "num": 32,
+    "onModifyMove": true
+  },
+  "shadowshield": {
+    "flags": {},
+    "name": "Shadow Shield",
+    "rating": 3.5,
+    "num": 231,
+    "onSourceModifyDamage": true
+  },
+  "shadowtag": {
+    "flags": {},
+    "name": "Shadow Tag",
+    "rating": 5,
+    "num": 23,
+    "onFoeTrapPokemon": true,
+    "onFoeMaybeTrapPokemon": true
+  },
+  "sharpness": {
+    "onBasePowerPriority": 19,
+    "flags": {},
+    "name": "Sharpness",
+    "rating": 3.5,
+    "num": 292,
+    "onBasePower": true
+  },
+  "shedskin": {
+    "onResidualOrder": 5,
+    "onResidualSubOrder": 3,
+    "flags": {},
+    "name": "Shed Skin",
+    "rating": 3,
+    "num": 61,
+    "onResidual": true
+  },
+  "sheerforce": {
+    "onBasePowerPriority": 21,
+    "flags": {},
+    "name": "Sheer Force",
+    "rating": 3.5,
+    "num": 125,
+    "onModifyMove": true,
+    "onBasePower": true
+  },
+  "shellarmor": {
+    "onCriticalHit": false,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Shell Armor",
+    "rating": 1,
+    "num": 75
+  },
+  "shielddust": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Shield Dust",
+    "rating": 2,
+    "num": 19,
+    "onModifySecondaries": true
+  },
+  "shieldsdown": {
+    "onSwitchInPriority": -1,
+    "onResidualOrder": 29,
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "cantsuppress": 1
+    },
+    "name": "Shields Down",
+    "rating": 3,
+    "num": 197,
+    "onStart": true,
+    "onResidual": true,
+    "onSetStatus": true,
+    "onTryAddVolatile": true
+  },
+  "simple": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Simple",
+    "rating": 4,
+    "num": 86,
+    "onChangeBoost": true
+  },
+  "skilllink": {
+    "flags": {},
+    "name": "Skill Link",
+    "rating": 3,
+    "num": 92,
+    "onModifyMove": true
+  },
+  "slowstart": {
+    "onResidualOrder": 28,
+    "onResidualSubOrder": 2,
+    "onModifyAtkPriority": 5,
+    "flags": {},
+    "name": "Slow Start",
+    "rating": -1,
+    "num": 112,
+    "onStart": true,
+    "onResidual": true,
+    "onModifyAtk": true,
+    "onModifySpe": true
+  },
+  "slushrush": {
+    "flags": {},
+    "name": "Slush Rush",
+    "rating": 3,
+    "num": 202,
+    "onModifySpe": true
+  },
+  "sniper": {
+    "flags": {},
+    "name": "Sniper",
+    "rating": 2,
+    "num": 97,
+    "onModifyDamage": true
+  },
+  "snowcloak": {
+    "onModifyAccuracyPriority": -1,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Snow Cloak",
+    "rating": 1.5,
+    "num": 81,
+    "onImmunity": true,
+    "onModifyAccuracy": true
+  },
+  "snowwarning": {
+    "flags": {},
+    "name": "Snow Warning",
+    "rating": 4,
+    "num": 117,
+    "onStart": true
+  },
+  "solarpower": {
+    "onModifySpAPriority": 5,
+    "flags": {},
+    "name": "Solar Power",
+    "rating": 2,
+    "num": 94,
+    "onModifySpA": true,
+    "onWeather": true
+  },
+  "solidrock": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Solid Rock",
+    "rating": 3,
+    "num": 116,
+    "onSourceModifyDamage": true
+  },
+  "soulheart": {
+    "onAnyFaintPriority": 1,
+    "flags": {},
+    "name": "Soul-Heart",
+    "rating": 3.5,
+    "num": 220,
+    "onAnyFaint": true
+  },
+  "soundproof": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Soundproof",
+    "rating": 2,
+    "num": 43,
+    "onTryHit": true,
+    "onAllyTryHitSide": true
+  },
+  "speedboost": {
+    "onResidualOrder": 28,
+    "onResidualSubOrder": 2,
+    "flags": {},
+    "name": "Speed Boost",
+    "rating": 4.5,
+    "num": 3,
+    "onResidual": true
+  },
+  "stakeout": {
+    "onModifyAtkPriority": 5,
+    "onModifySpAPriority": 5,
+    "flags": {},
+    "name": "Stakeout",
+    "rating": 4.5,
+    "num": 198,
+    "onModifyAtk": true,
+    "onModifySpA": true
+  },
+  "stall": {
+    "onFractionalPriority": -0.1,
+    "flags": {},
+    "name": "Stall",
+    "rating": -1,
+    "num": 100
+  },
+  "stalwart": {
+    "onModifyMovePriority": 1,
+    "flags": {},
+    "name": "Stalwart",
+    "rating": 0,
+    "num": 242,
+    "onModifyMove": true
+  },
+  "stamina": {
+    "flags": {},
+    "name": "Stamina",
+    "rating": 4,
+    "num": 192,
+    "onDamagingHit": true
+  },
+  "stancechange": {
+    "onModifyMovePriority": 1,
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "cantsuppress": 1
+    },
+    "name": "Stance Change",
+    "rating": 4,
+    "num": 176,
+    "onModifyMove": true
+  },
+  "static": {
+    "flags": {},
+    "name": "Static",
+    "rating": 2,
+    "num": 9,
+    "onDamagingHit": true
+  },
+  "steadfast": {
+    "flags": {},
+    "name": "Steadfast",
+    "rating": 1,
+    "num": 80,
+    "onFlinch": true
+  },
+  "steamengine": {
+    "flags": {},
+    "name": "Steam Engine",
+    "rating": 2,
+    "num": 243,
+    "onDamagingHit": true
+  },
+  "steelworker": {
+    "onModifyAtkPriority": 5,
+    "onModifySpAPriority": 5,
+    "flags": {},
+    "name": "Steelworker",
+    "rating": 3.5,
+    "num": 200,
+    "onModifyAtk": true,
+    "onModifySpA": true
+  },
+  "steelyspirit": {
+    "onAllyBasePowerPriority": 22,
+    "flags": {},
+    "name": "Steely Spirit",
+    "rating": 3.5,
+    "num": 252,
+    "onAllyBasePower": true
+  },
+  "stench": {
+    "onModifyMovePriority": -1,
+    "flags": {},
+    "name": "Stench",
+    "rating": 0.5,
+    "num": 1,
+    "onModifyMove": true
+  },
+  "stickyhold": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Sticky Hold",
+    "rating": 1.5,
+    "num": 60,
+    "onTakeItem": true
+  },
+  "stormdrain": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Storm Drain",
+    "rating": 3,
+    "num": 114,
+    "onTryHit": true,
+    "onAnyRedirectTarget": true
+  },
+  "strongjaw": {
+    "onBasePowerPriority": 19,
+    "flags": {},
+    "name": "Strong Jaw",
+    "rating": 3.5,
+    "num": 173,
+    "onBasePower": true
+  },
+  "sturdy": {
+    "onDamagePriority": -30,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Sturdy",
+    "rating": 3,
+    "num": 5,
+    "onTryHit": true,
+    "onDamage": true
+  },
+  "suctioncups": {
+    "onDragOutPriority": 1,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Suction Cups",
+    "rating": 1,
+    "num": 21,
+    "onDragOut": true
+  },
+  "superluck": {
+    "flags": {},
+    "name": "Super Luck",
+    "rating": 1.5,
+    "num": 105,
+    "onModifyCritRatio": true
+  },
+  "supersweetsyrup": {
+    "flags": {},
+    "name": "Supersweet Syrup",
+    "rating": 1.5,
+    "num": 306,
+    "onStart": true
+  },
+  "supremeoverlord": {
+    "onBasePowerPriority": 21,
+    "flags": {},
+    "name": "Supreme Overlord",
+    "rating": 4,
+    "num": 293,
+    "onStart": true,
+    "onEnd": true,
+    "onBasePower": true
+  },
+  "surgesurfer": {
+    "flags": {},
+    "name": "Surge Surfer",
+    "rating": 3,
+    "num": 207,
+    "onModifySpe": true
+  },
+  "swarm": {
+    "onModifyAtkPriority": 5,
+    "onModifySpAPriority": 5,
+    "flags": {},
+    "name": "Swarm",
+    "rating": 2,
+    "num": 68,
+    "onModifyAtk": true,
+    "onModifySpA": true
+  },
+  "sweetveil": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Sweet Veil",
+    "rating": 2,
+    "num": 175,
+    "onAllySetStatus": true,
+    "onAllyTryAddVolatile": true
+  },
+  "swiftswim": {
+    "flags": {},
+    "name": "Swift Swim",
+    "rating": 3,
+    "num": 33,
+    "onModifySpe": true
+  },
+  "swordofruin": {
+    "flags": {},
+    "name": "Sword of Ruin",
+    "rating": 4.5,
+    "num": 285,
+    "onStart": true,
+    "onAnyModifyDef": true
+  },
+  "symbiosis": {
+    "flags": {},
+    "name": "Symbiosis",
+    "rating": 0,
+    "num": 180,
+    "onAllyAfterUseItem": true
+  },
+  "synchronize": {
+    "flags": {},
+    "name": "Synchronize",
+    "rating": 2,
+    "num": 28,
+    "onAfterSetStatus": true
+  },
+  "tabletsofruin": {
+    "flags": {},
+    "name": "Tablets of Ruin",
+    "rating": 4.5,
+    "num": 284,
+    "onStart": true,
+    "onAnyModifyAtk": true
+  },
+  "tangledfeet": {
+    "onModifyAccuracyPriority": -1,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Tangled Feet",
+    "rating": 1,
+    "num": 77,
+    "onModifyAccuracy": true
+  },
+  "tanglinghair": {
+    "flags": {},
+    "name": "Tangling Hair",
+    "rating": 2,
+    "num": 221,
+    "onDamagingHit": true
+  },
+  "technician": {
+    "onBasePowerPriority": 30,
+    "flags": {},
+    "name": "Technician",
+    "rating": 3.5,
+    "num": 101,
+    "onBasePower": true
+  },
+  "telepathy": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Telepathy",
+    "rating": 0,
+    "num": 140,
+    "onTryHit": true
+  },
+  "teraformzero": {
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1
+    },
+    "name": "Teraform Zero",
+    "rating": 3,
+    "num": 309,
+    "onAfterTerastallization": true
+  },
+  "terashell": {
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "breakable": 1
+    },
+    "name": "Tera Shell",
+    "rating": 3.5,
+    "num": 308,
+    "onAnyBeforeMove": true,
+    "onAnyAfterMove": true
+  },
+  "terashift": {
+    "onSwitchInPriority": 2,
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "cantsuppress": 1,
+      "notransform": 1
+    },
+    "name": "Tera Shift",
+    "rating": 3,
+    "num": 307,
+    "onSwitchIn": true
+  },
+  "teravolt": {
+    "flags": {},
+    "name": "Teravolt",
+    "rating": 3,
+    "num": 164,
+    "onStart": true,
+    "onModifyMove": true
+  },
+  "thermalexchange": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Thermal Exchange",
+    "rating": 2.5,
+    "num": 270,
+    "onDamagingHit": true,
+    "onUpdate": true,
+    "onSetStatus": true
+  },
+  "thickfat": {
+    "onSourceModifyAtkPriority": 6,
+    "onSourceModifySpAPriority": 5,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Thick Fat",
+    "rating": 3.5,
+    "num": 47,
+    "onSourceModifyAtk": true,
+    "onSourceModifySpA": true
+  },
+  "tintedlens": {
+    "flags": {},
+    "name": "Tinted Lens",
+    "rating": 4,
+    "num": 110,
+    "onModifyDamage": true
+  },
+  "torrent": {
+    "onModifyAtkPriority": 5,
+    "onModifySpAPriority": 5,
+    "flags": {},
+    "name": "Torrent",
+    "rating": 2,
+    "num": 67,
+    "onModifyAtk": true,
+    "onModifySpA": true
+  },
+  "toughclaws": {
+    "onBasePowerPriority": 21,
+    "flags": {},
+    "name": "Tough Claws",
+    "rating": 3.5,
+    "num": 181,
+    "onBasePower": true
+  },
+  "toxicboost": {
+    "onBasePowerPriority": 19,
+    "flags": {},
+    "name": "Toxic Boost",
+    "rating": 3,
+    "num": 137,
+    "onBasePower": true
+  },
+  "toxicchain": {
+    "flags": {},
+    "name": "Toxic Chain",
+    "rating": 4.5,
+    "num": 305,
+    "onSourceDamagingHit": true
+  },
+  "toxicdebris": {
+    "flags": {},
+    "name": "Toxic Debris",
+    "rating": 3.5,
+    "num": 295,
+    "onDamagingHit": true
+  },
+  "trace": {
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1
+    },
+    "name": "Trace",
+    "rating": 2.5,
+    "num": 36,
+    "onStart": true,
+    "onUpdate": true
+  },
+  "transistor": {
+    "onModifyAtkPriority": 5,
+    "onModifySpAPriority": 5,
+    "flags": {},
+    "name": "Transistor",
+    "rating": 3.5,
+    "num": 262,
+    "onModifyAtk": true,
+    "onModifySpA": true
+  },
+  "triage": {
+    "flags": {},
+    "name": "Triage",
+    "rating": 3.5,
+    "num": 205,
+    "onModifyPriority": true
+  },
+  "truant": {
+    "onBeforeMovePriority": 9,
+    "condition": {},
+    "flags": {},
+    "name": "Truant",
+    "rating": -1,
+    "num": 54,
+    "onStart": true,
+    "onBeforeMove": true
+  },
+  "turboblaze": {
+    "flags": {},
+    "name": "Turboblaze",
+    "rating": 3,
+    "num": 163,
+    "onStart": true,
+    "onModifyMove": true
+  },
+  "unaware": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Unaware",
+    "rating": 4,
+    "num": 109,
+    "onAnyModifyBoost": true
+  },
+  "unburden": {
+    "condition": {
+      "onModifySpe": true
+    },
+    "flags": {},
+    "name": "Unburden",
+    "rating": 3.5,
+    "num": 84,
+    "onAfterUseItem": true,
+    "onTakeItem": true,
+    "onEnd": true
+  },
+  "unnerve": {
+    "onSwitchInPriority": 1,
+    "flags": {},
+    "name": "Unnerve",
+    "rating": 1,
+    "num": 127,
+    "onStart": true,
+    "onEnd": true,
+    "onFoeTryEatItem": true
+  },
+  "unseenfist": {
+    "flags": {},
+    "name": "Unseen Fist",
+    "rating": 2,
+    "num": 260,
+    "onModifyMove": true
+  },
+  "vesselofruin": {
+    "flags": {},
+    "name": "Vessel of Ruin",
+    "rating": 4.5,
+    "num": 284,
+    "onStart": true,
+    "onAnyModifySpA": true
+  },
+  "victorystar": {
+    "onAnyModifyAccuracyPriority": -1,
+    "flags": {},
+    "name": "Victory Star",
+    "rating": 2,
+    "num": 162,
+    "onAnyModifyAccuracy": true
+  },
+  "vitalspirit": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Vital Spirit",
+    "rating": 1.5,
+    "num": 72,
+    "onUpdate": true,
+    "onSetStatus": true,
+    "onTryAddVolatile": true
+  },
+  "voltabsorb": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Volt Absorb",
+    "rating": 3.5,
+    "num": 10,
+    "onTryHit": true
+  },
+  "wanderingspirit": {
+    "flags": {},
+    "name": "Wandering Spirit",
+    "rating": 2.5,
+    "num": 254,
+    "onDamagingHit": true
+  },
+  "waterabsorb": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Water Absorb",
+    "rating": 3.5,
+    "num": 11,
+    "onTryHit": true
+  },
+  "waterbubble": {
+    "onSourceModifyAtkPriority": 5,
+    "onSourceModifySpAPriority": 5,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Water Bubble",
+    "rating": 4.5,
+    "num": 199,
+    "onSourceModifyAtk": true,
+    "onSourceModifySpA": true,
+    "onModifyAtk": true,
+    "onModifySpA": true,
+    "onUpdate": true,
+    "onSetStatus": true
+  },
+  "watercompaction": {
+    "flags": {},
+    "name": "Water Compaction",
+    "rating": 1.5,
+    "num": 195,
+    "onDamagingHit": true
+  },
+  "waterveil": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Water Veil",
+    "rating": 2,
+    "num": 41,
+    "onUpdate": true,
+    "onSetStatus": true
+  },
+  "weakarmor": {
+    "flags": {},
+    "name": "Weak Armor",
+    "rating": 1,
+    "num": 133,
+    "onDamagingHit": true
+  },
+  "wellbakedbody": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Well-Baked Body",
+    "rating": 3.5,
+    "num": 273,
+    "onTryHit": true
+  },
+  "whitesmoke": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "White Smoke",
+    "rating": 2,
+    "num": 73,
+    "onTryBoost": true
+  },
+  "wimpout": {
+    "flags": {},
+    "name": "Wimp Out",
+    "rating": 1,
+    "num": 193,
+    "onEmergencyExit": true
+  },
+  "windpower": {
+    "onDamagingHitOrder": 1,
+    "flags": {},
+    "name": "Wind Power",
+    "rating": 1,
+    "num": 277,
+    "onDamagingHit": true,
+    "onSideConditionStart": true
+  },
+  "windrider": {
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Wind Rider",
+    "rating": 3.5,
+    "num": 274,
+    "onStart": true,
+    "onTryHit": true,
+    "onSideConditionStart": true
+  },
+  "wonderguard": {
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "failskillswap": 1,
+      "breakable": 1
+    },
+    "name": "Wonder Guard",
+    "rating": 5,
+    "num": 25,
+    "onTryHit": true
+  },
+  "wonderskin": {
+    "onModifyAccuracyPriority": 10,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Wonder Skin",
+    "rating": 2,
+    "num": 147,
+    "onModifyAccuracy": true
+  },
+  "zenmode": {
+    "onResidualOrder": 29,
+    "condition": {},
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "cantsuppress": 1
+    },
+    "name": "Zen Mode",
+    "rating": 0,
+    "num": 161,
+    "onResidual": true,
+    "onEnd": true
+  },
+  "zerotohero": {
+    "flags": {
+      "failroleplay": 1,
+      "noreceiver": 1,
+      "noentrain": 1,
+      "notrace": 1,
+      "failskillswap": 1,
+      "cantsuppress": 1,
+      "notransform": 1
+    },
+    "name": "Zero to Hero",
+    "rating": 5,
+    "num": 278,
+    "onSwitchOut": true,
+    "onSwitchIn": true
+  },
+  "mountaineer": {
+    "isNonstandard": "CAP",
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Mountaineer",
+    "rating": 3,
+    "num": -1,
+    "onDamage": true,
+    "onTryHit": true
+  },
+  "rebound": {
+    "isNonstandard": "CAP",
+    "onTryHitPriority": 1,
+    "flags": {
+      "breakable": 1
+    },
+    "name": "Rebound",
+    "rating": 3,
+    "num": -2,
+    "onTryHit": true,
+    "onAllyTryHitSide": true
+  },
+  "persistent": {
+    "isNonstandard": "CAP",
+    "flags": {},
+    "name": "Persistent",
+    "rating": 3,
+    "num": -3
+  }
+}

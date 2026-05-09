@@ -1,0 +1,34 @@
+//! Fluffy Ability
+//!
+//! Pokemon Showdown - http://pokemonshowdown.com/
+//!
+//! Generated from data/abilities.ts
+
+use crate::battle::Battle;
+use crate::event::EventResult;
+
+/// onSourceModifyDamage(damage, source, target, move) {
+///     let mod = 1;
+///     if (move.type === 'Fire') mod *= 2;
+///     if (move.flags['contact']) mod /= 2;
+///     return this.chainModify(mod);
+/// }
+pub fn on_source_modify_damage(battle: &mut Battle, _damage: i32, _source_pos: (usize, usize), _target_pos: (usize, usize), active_move: Option<&crate::battle_actions::ActiveMove>) -> EventResult {
+    // JavaScript checks move.type and move.flags which are the active move's current values
+    // (may be modified by abilities like Refrigerate)
+    let active_move = match active_move {
+        Some(m) => m,
+        None => return EventResult::Continue,
+    };
+
+    let mut mod_value = 1.0;
+    if active_move.move_type == "Fire" {
+        mod_value *= 2.0;
+    }
+    if active_move.flags.contact {
+        mod_value /= 2.0;
+    }
+    battle.chain_modify(mod_value);
+    EventResult::Continue
+}
+

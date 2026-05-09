@@ -1,0 +1,39 @@
+=======================================
+Part 1: Regression Tests (Seeds 1-1000)
+=======================================
+
+Building Rust binaries...
+Running unified tests...
+Comparing unified results...
+
+
+Unified tests: 1000/1000 passed
+No regressions detected.
+
+=======================================
+Part 2: Minimized Seeds Tests (minimized teams)
+=======================================
+
+Running 155 minimized seed tests...
+Comparing minimized results...
+
+
+=======================================
+Part 3: Full Team Tests (same seeds, generated teams)
+=======================================
+
+Running 155 seeds with full generated teams...
+Comparing full team results...
+
+
+=======================================
+Final Summary
+=======================================
+
+Regression tests (1-1000): 1000/1000 passed
+Minimized teams: 155/155 passed
+Full teams: 155/155 passed
+
+All minimized seeds passed!
+
+SUCCESS: No regressions detected.

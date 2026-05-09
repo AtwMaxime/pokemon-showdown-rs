@@ -1,0 +1,192 @@
+use crate::*;
+use crate::battle_actions::ActiveMove;
+
+impl Dex {
+
+    /// Get an ActiveMove from a move name or ID
+    /// Equivalent to Dex.getActiveMove() in dex.ts
+    ///
+    /// TypeScript source:
+    /// ```typescript
+    /// getActiveMove(move: Move | string): ActiveMove {
+    ///     if (move && typeof (move as ActiveMove).hit === 'number') return move as ActiveMove;
+    ///     move = this.moves.get(move);
+    ///     const moveCopy: ActiveMove = this.deepClone(move);
+    ///     moveCopy.hit = 0;
+    ///     return moveCopy;
+    /// }
+    /// ```
+    ///
+    /// Creates a mutable copy of move data suitable for use in battle
+    pub fn get_active_move(&self, name: &str) -> Option<ActiveMove> {
+        let move_data = self.moves().get(name)?;
+
+        // Convert MoveData to ActiveMove
+        let active_move = ActiveMove {
+            // From BasicEffect
+            id: move_data.id.clone(),
+            name: move_data.name.clone(),
+            fullname: String::new(), // Will be set during battle
+            num: move_data.num,
+            exists: true,
+            gen: self.gen,
+            short_desc: String::new(),
+            desc: String::new(),
+            is_nonstandard: move_data.is_nonstandard.clone(),
+            duration: None,
+            no_copy: false,
+            affects_fainted: false,
+            source_effect_name: None,
+
+            // From MoveData
+            // Embedded conditions (like gmaxvolcalith) don't have names, store None
+            condition: move_data.condition.clone(),
+            base_power: move_data.base_power,
+            accuracy: move_data.accuracy.clone(),
+            pp: move_data.pp,
+            category: move_data.category.clone(),
+            move_type: move_data.move_type.clone(),
+            priority: move_data.priority,
+            target: move_data.target.clone(),
+            flags: move_data.flags.clone(),
+            real_move: move_data.real_move.clone(),
+            damage: move_data.damage.clone(),
+            contest_type: move_data.contest_type.clone(),
+            no_pp_boosts: move_data.no_pp_boosts,
+            is_z: move_data.is_z.clone(),
+            z_move: move_data.z_move.clone(),
+            is_max: move_data.is_max.clone(),
+            max_move: move_data.max_move.clone(),
+            ohko: move_data.ohko.clone(),
+            thaws_target: move_data.thaws_target,
+            heal: move_data.heal,
+            drain: move_data.drain,
+            force_switch: move_data.force_switch,
+            self_switch: move_data.self_switch.clone(),
+            self_boost: move_data.self_boost,
+            self_destruct: move_data.self_destruct.clone(),
+            breaks_protect: move_data.breaks_protect,
+            recoil: move_data.recoil,
+            mindblown_recoil: move_data.mindblown_recoil,
+            steals_boosts: move_data.steals_boosts,
+            struggle_recoil: move_data.struggle_recoil,
+            secondary: move_data.secondary.clone(),
+            // If there's a singular secondary and no secondaries array, create one with the singular
+            // If there's a secondaries array, use it (JavaScript behavior: secondaries takes precedence)
+            // IMPORTANT: Set has_on_hit flag for moves that have secondary.onHit callbacks
+            // This distinguishes original move secondaries from item-added secondaries (like King's Rock)
+            secondaries: {
+                let has_secondary_callback = crate::data::move_callbacks::has_secondary_on_hit(move_data.id.as_str());
+                let mut secs = if move_data.secondaries.is_some() {
+                    move_data.secondaries.clone().unwrap_or_default()
+                } else if let Some(ref sec) = move_data.secondary {
+                    vec![sec.clone()]
+                } else {
+                    Vec::new()
+                };
+                // Mark original secondaries as having onHit callbacks if the move has them
+                if has_secondary_callback {
+                    for sec in &mut secs {
+                        sec.has_on_hit = true;
+                    }
+                }
+                secs
+            },
+            self_effect: move_data.self_effect.clone(),
+            has_sheer_force: move_data.has_sheer_force,
+            // JavaScript: alwaysHit?: boolean; // currently unused (dex-moves.ts:216)
+            // IMPORTANT: `accuracy: true` is DIFFERENT from `alwaysHit: true`:
+            //   - accuracy: true -> The move has 100% accuracy, but Accuracy event still runs
+            //   - alwaysHit: true -> Skip the Accuracy event entirely
+            // alwaysHit is almost never set in JavaScript, so default to false
+            always_hit: false,
+            base_move_type: None,
+            base_power_modifier: None,
+            crit_modifier: None,
+            crit_ratio: move_data.crit_ratio,
+            override_offensive_pokemon: move_data.override_offensive_pokemon.clone(),
+            override_offensive_stat: move_data.override_offensive_stat.clone(),
+            override_defensive_pokemon: None,
+            override_defensive_stat: move_data.override_defensive_stat.clone(),
+            force_stab: false,
+            ignore_ability: move_data.ignore_ability,
+            ignore_accuracy: move_data.ignore_accuracy,
+            ignore_evasion: move_data.ignore_evasion,
+            ignore_positive_evasion: None,
+            ignore_immunity: {
+                // JavaScript (dex-moves.ts:497):
+                // this.ignoreImmunity = (data.ignoreImmunity !== undefined ? data.ignoreImmunity : this.category === 'Status');
+                // Status moves default to ignoring immunity if not explicitly set
+                if move_data.ignore_immunity.is_some() {
+                    move_data.ignore_immunity.clone()
+                } else if move_data.category == "Status" {
+                    Some(crate::battle_actions::IgnoreImmunity::All)
+                } else {
+                    None
+                }
+            },
+            ignore_defensive: move_data.ignore_defensive,
+            ignore_offensive: false,
+            ignore_negative_offensive: false,
+            ignore_positive_defensive: false,
+            infiltrates: false,
+            will_crit: move_data.will_crit,
+            multi_accuracy: move_data.multi_accuracy,
+            multi_hit: move_data.multi_hit.clone(),
+            multi_hit_type: None,
+            no_damage_variance: None,
+            non_ghost_target: move_data.non_ghost_target.clone(),
+            spread_modifier: None,
+            sleep_usable: move_data.sleep_usable,
+            smart_target: move_data.smart_target,
+            tracks_target: move_data.tracks_target,
+            calls_move: move_data.calls_move,
+            has_crash_damage: move_data.has_crash_damage,
+            is_confusion_self_hit: None,
+            stalling_move: move_data.stalling_move,
+            base_move: move_data.base_move.clone(),
+
+            // From HitEffect
+            boosts: move_data.boosts,
+            status: move_data.status.clone(),
+            volatile_status: move_data.volatile_status.clone(),
+            side_condition: move_data.side_condition.clone(),
+            slot_condition: move_data.slot_condition.clone(),
+            pseudo_weather: move_data.pseudo_weather.clone(),
+            terrain: move_data.terrain.clone(),
+            weather: move_data.weather.clone(),
+
+            // ActiveMove-specific
+            hit: 0,
+            total_damage: 0,
+            move_hit_data: std::collections::HashMap::new(),
+            spread_hit: false,
+            last_hit: None,
+            is_external: false,
+            is_z_or_max_powered: move_data.is_z_or_max_powered,
+            prankster_boosted: false,
+            has_bounced: false,
+            source_effect: None,
+            has_aura_break: None,
+            aura_booster: None,
+            caused_crash_damage: None,
+            self_dropped: false,
+            flung_item: None,
+            stellar_boosted: false,
+            type_changer_boosted: None,
+            magnitude: None,
+            will_change_forme: false,
+            status_roll: None,
+            force_status: None,
+            ruined_atk: None,
+            ruined_spa: None,
+            ruined_def: None,
+            ruined_spd: None,
+            allies: None,
+            ability: None,
+            hit_targets: Vec::new(),
+        };
+
+        Some(active_move)
+    }
+}

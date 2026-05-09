@@ -1,0 +1,153 @@
+//! Snatch Move
+//!
+//! Pokemon Showdown - http://pokemonshowdown.com/
+//!
+//! Generated from data/moves.ts
+
+use crate::battle::Battle;
+use crate::event::EventResult;
+use crate::Pokemon;
+
+pub mod condition {
+    use super::*;
+
+    /// onStart(pokemon) {
+    ///     this.add('-singleturn', pokemon, 'Snatch');
+    /// }
+    pub fn on_start(
+        battle: &mut Battle,
+        pokemon_pos: (usize, usize),
+        _source_pos: Option<(usize, usize)>,
+        _effect: Option<&crate::battle::Effect>,
+    ) -> EventResult {
+        // onStart(pokemon) {
+        //     this.add('-singleturn', pokemon, 'Snatch');
+        // }
+        let pokemon = pokemon_pos;
+
+        // this.add('-singleturn', pokemon, 'Snatch');
+        let pokemon_arg = {
+            let pokemon_data = match battle.pokemon_at(pokemon.0, pokemon.1) {
+                Some(p) => p,
+                None => return EventResult::Continue,
+            };
+            pokemon_data.get_slot()
+        };
+
+        battle.add("-singleturn", &[pokemon_arg.into(), "Snatch".into()]);
+
+        EventResult::Continue
+    }
+
+    /// onAnyPrepareHit(source, target, move) {
+    ///     const snatchUser = this.effectState.source;
+    ///     if (snatchUser.isSkyDropped()) return;
+    ///     if (!move || move.isZ || move.isMax || !move.flags['snatch'] || move.sourceEffect === 'snatch') {
+    ///         return;
+    ///     }
+    ///     snatchUser.removeVolatile('snatch');
+    ///     this.add('-activate', snatchUser, 'move: Snatch', `[of] ${source}`);
+    ///     this.actions.useMove(move.id, snatchUser);
+    ///     return null;
+    /// }
+    pub fn on_any_prepare_hit(
+        battle: &mut Battle,
+        source_pos: Option<(usize, usize)>,
+        _target_pos: Option<(usize, usize)>,
+        active_move: Option<&crate::battle_actions::ActiveMove>,
+    ) -> EventResult {
+        use crate::dex_data::ID;
+        let move_id = active_move.map(|m| m.id.to_string()).unwrap_or_default();
+
+        // onAnyPrepareHit(source, target, move) {
+        //     const snatchUser = this.effectState.source;
+        //     if (snatchUser.isSkyDropped()) return;
+        //     if (!move || move.isZ || move.isMax || !move.flags['snatch'] || move.sourceEffect === 'snatch') {
+        //         return;
+        //     }
+        //     snatchUser.removeVolatile('snatch');
+        //     this.add('-activate', snatchUser, 'move: Snatch', `[of] ${source}`);
+        //     this.actions.useMove(move.id, snatchUser);
+        //     return null;
+        // }
+        let source = source_pos;
+
+        // const snatchUser = this.effectState.source;
+        let snatch_user = match battle.with_effect_state_ref(|state| state.source).flatten() {
+            Some(s) => s,
+            None => return EventResult::Continue,
+        };
+
+        // if (snatchUser.isSkyDropped()) return;
+        let is_skydropped = Pokemon::is_sky_dropped(battle, snatch_user);
+        if is_skydropped {
+            return EventResult::Continue;
+        }
+
+        // if (!move || move.isZ || move.isMax || !move.flags['snatch'] || move.sourceEffect === 'snatch') {
+        //     return;
+        // }
+        let (is_z, is_max, has_snatch_flag, source_effect) = {
+            let active_move = match &battle.active_move {
+                Some(active_move) => active_move,
+                None => return EventResult::Continue,
+            };
+            (
+                active_move.borrow().is_z.is_some(),
+                active_move.borrow().is_max.is_some(),
+                active_move.borrow().flags.snatch,
+                active_move.borrow().source_effect.as_ref().map(|e| e.as_str().to_string()),
+            )
+        };
+
+        if is_z || is_max || !has_snatch_flag || source_effect.as_deref() == Some("snatch") {
+            return EventResult::Continue;
+        }
+
+        // snatchUser.removeVolatile('snatch');
+        {
+            Pokemon::remove_volatile(battle, snatch_user, &ID::from("snatch"));
+        }
+
+        // this.add('-activate', snatchUser, 'move: Snatch', `[of] ${source}`);
+        let snatch_user_arg = {
+            let snatch_user_pokemon = match battle.pokemon_at(snatch_user.0, snatch_user.1) {
+                Some(p) => p,
+                None => return EventResult::Continue,
+            };
+            snatch_user_pokemon.get_slot()
+        };
+
+        if let Some(src) = source {
+            let source_arg = {
+                let source_pokemon = match battle.pokemon_at(src.0, src.1) {
+                    Some(p) => p,
+                    None => return EventResult::Continue,
+                };
+                source_pokemon.get_slot()
+            };
+
+            battle.add(
+                "-activate",
+                &[
+                    snatch_user_arg.into(),
+                    "move: Snatch".into(),
+                    format!("[of] {}", source_arg).into(),
+                ],
+            );
+        } else {
+            battle.add(
+                "-activate",
+                &[snatch_user_arg.into(), "move: Snatch".into()],
+            );
+        }
+
+        // this.actions.useMove(move.id, snatchUser);
+        if let Some(move_data) = battle.dex.moves().get(&move_id).cloned() {
+            battle.use_move(&move_data, snatch_user, None, None, None, None);
+        }
+
+        // return null; - prevents the move from executing
+        EventResult::Null
+    }
+}

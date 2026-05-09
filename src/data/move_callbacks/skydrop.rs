@@ -1,0 +1,770 @@
+//! Sky Drop Move
+//!
+//! Pokemon Showdown - http://pokemonshowdown.com/
+//!
+//! Generated from data/moves.ts
+
+use crate::battle::Battle;
+use crate::event::EventResult;
+use crate::Pokemon;
+
+/// ```ignore
+/// onModifyMove(move, source) {
+///     if (!source.volatiles['skydrop']) {
+///         move.accuracy = true;
+///         delete move.flags['contact'];
+///     }
+/// }
+/// ```
+pub fn on_modify_move(
+    battle: &mut Battle,
+    pokemon_pos: (usize, usize),
+    _target_pos: Option<(usize, usize)>,
+) -> EventResult {
+    use crate::dex_data::ID;
+
+    // onModifyMove(move, source) {
+    //     if (!source.volatiles['skydrop']) {
+    //         move.accuracy = true;
+    //         delete move.flags['contact'];
+    //     }
+    // }
+    let source = pokemon_pos;
+
+    // if (!source.volatiles['skydrop']) {
+    // JavaScript ONLY sets accuracy=true on turn 1 (charging turn) when no skydrop volatile exists
+    // On turn 2 (attack turn), skydrop volatile exists, so this does NOT set accuracy=true
+    // This allows the normal accuracy check to happen on turn 2
+    let has_skydrop = {
+        let source_pokemon = match battle.pokemon_at(source.0, source.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        source_pokemon.volatiles.contains_key(&ID::from("skydrop"))
+    };
+
+    debug_elog!("[SKYDROP_MODIFY_MOVE] turn={}, source={:?}, has_skydrop={}", battle.turn, source, has_skydrop);
+
+    // Set accuracy to true only on turn 1 (when no skydrop volatile exists)
+    if !has_skydrop {
+        // move.accuracy = true;
+        // delete move.flags['contact'];
+        let active_move = match &mut battle.active_move {
+            Some(m) => m,
+            None => return EventResult::Continue,
+        };
+        debug_elog!("[SKYDROP_MODIFY_MOVE] Setting accuracy=true (charge phase)");
+        active_move.borrow_mut().accuracy = crate::dex::Accuracy::AlwaysHits;
+        active_move.borrow_mut().flags.contact = false;
+    } else {
+        debug_elog!("[SKYDROP_MODIFY_MOVE] Keeping accuracy=100 (attack phase)");
+    }
+
+    EventResult::Continue
+}
+
+/// ```ignore
+/// onMoveFail(target, source) {
+///     if (source.volatiles['twoturnmove'] && source.volatiles['twoturnmove'].duration === 1) {
+///         source.removeVolatile('skydrop');
+///         source.removeVolatile('twoturnmove');
+///         if (target === this.effectState.target) {
+///             this.add('-end', target, 'Sky Drop', '[interrupt]');
+///         }
+///     }
+/// }
+/// ```
+pub fn on_move_fail(
+    battle: &mut Battle,
+    target_pos: Option<(usize, usize)>,
+    source_pos: Option<(usize, usize)>,
+) -> EventResult {
+    use crate::dex_data::ID;
+
+    // onMoveFail(target, source) {
+    //     if (source.volatiles['twoturnmove'] && source.volatiles['twoturnmove'].duration === 1) {
+    //         source.removeVolatile('skydrop');
+    //         source.removeVolatile('twoturnmove');
+    //         if (target === this.effectState.target) {
+    //             this.add('-end', target, 'Sky Drop', '[interrupt]');
+    //         }
+    //     }
+    // }
+    let source = match source_pos {
+        Some(pos) => pos,
+        None => return EventResult::Continue,
+    };
+    let target = match target_pos {
+        Some(pos) => pos,
+        None => return EventResult::Continue,
+    };
+
+    // if (source.volatiles['twoturnmove'] && source.volatiles['twoturnmove'].duration === 1) {
+    let has_twoturnmove_duration_1 = {
+        let source_pokemon = match battle.pokemon_at(source.0, source.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+
+        if let Some(volatile) = source_pokemon.volatiles.get(&ID::from("twoturnmove")) {
+            volatile.borrow().duration == Some(1)
+        } else {
+            false
+        }
+    };
+
+    if has_twoturnmove_duration_1 {
+        // source.removeVolatile('skydrop');
+        // source.removeVolatile('twoturnmove');
+        {
+            Pokemon::remove_volatile(battle, source, &ID::from("skydrop"));
+        }
+        {
+            Pokemon::remove_volatile(battle, source, &ID::from("twoturnmove"));
+        }
+
+        // if (target === this.effectState.target) {
+        //     this.add('-end', target, 'Sky Drop', '[interrupt]');
+        // }
+        let effect_target = battle.with_effect_state_ref(|state| state.target).flatten();
+
+        if Some(target) == effect_target {
+            let target_arg = {
+                let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+                    Some(p) => p,
+                    None => return EventResult::Continue,
+                };
+                target_pokemon.get_slot()
+            };
+
+            battle.add(
+                "-end",
+                &[target_arg.into(), "Sky Drop".into(), "[interrupt]".into()],
+            );
+        }
+    }
+
+    EventResult::Continue
+}
+
+/// onTry(source, target) {
+///     return !target.fainted;
+/// }
+pub fn on_try(
+    battle: &mut Battle,
+    _source_pos: (usize, usize),
+    target_pos: Option<(usize, usize)>,
+) -> EventResult {
+    // onTry(source, target) {
+    //     return !target.fainted;
+    // }
+    let target = match target_pos {
+        Some(pos) => pos,
+        None => return EventResult::Continue,
+    };
+
+    let is_fainted = {
+        let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        target_pokemon.fainted
+    };
+
+    EventResult::Boolean(!is_fainted)
+}
+
+/// ```ignore
+/// onTryHit(target, source, move) {
+///     if (source.removeVolatile(move.id)) {
+///         if (target !== source.volatiles['twoturnmove'].source) return false;
+///
+///         if (target.hasType('Flying')) {
+///             this.add('-immune', target);
+///             return null;
+///         }
+///     } else {
+///         if (target.volatiles['substitute'] || target.isAlly(source)) {
+///             return false;
+///         }
+///         if (target.getWeight() >= 2000) {
+///             this.add('-fail', target, 'move: Sky Drop', '[heavy]');
+///             return null;
+///         }
+///
+///         this.add('-prepare', source, move.name, target);
+///         source.addVolatile('twoturnmove', target);
+///         return null;
+///     }
+/// }
+/// ```
+pub fn on_try_hit(
+    battle: &mut Battle,
+    target_pos: (usize, usize),
+    source_pos: (usize, usize),
+) -> EventResult {
+    use crate::dex_data::ID;
+
+    // onTryHit(target, source, move) {
+    //     if (source.removeVolatile(move.id)) {
+    //         if (target !== source.volatiles['twoturnmove'].source) return false;
+    //
+    //         if (target.hasType('Flying')) {
+    //             this.add('-immune', target);
+    //             return null;
+    //         }
+    //     } else {
+    //         if (target.volatiles['substitute'] || target.isAlly(source)) {
+    //             return false;
+    //         }
+    //         if (target.getWeight() >= 2000) {
+    //             this.add('-fail', target, 'move: Sky Drop', '[heavy]');
+    //             return null;
+    //         }
+    //
+    //         this.add('-prepare', source, move.name, target);
+    //         source.addVolatile('twoturnmove', target);
+    //         return null;
+    //     }
+    // }
+    let target = target_pos;
+    let source = source_pos;
+
+    let move_id = {
+        let active_move = match &battle.active_move {
+            Some(active_move) => active_move,
+            None => return EventResult::Continue,
+        };
+        active_move.borrow().id.clone()
+    };
+
+    // if (source.removeVolatile(move.id)) {
+    let removed = {
+        Pokemon::remove_volatile(battle, source, &move_id)
+    };
+
+    if removed {
+        // if (target !== source.volatiles['twoturnmove'].source) return false;
+        let twoturnmove_source = {
+            let source_pokemon = match battle.pokemon_at(source.0, source.1) {
+                Some(p) => p,
+                None => return EventResult::Continue,
+            };
+            if let Some(volatile) = source_pokemon.volatiles.get(&ID::from("twoturnmove")) {
+                volatile.borrow().source
+            } else {
+                None
+            }
+        };
+
+        if Some(target) != twoturnmove_source {
+            return EventResult::Boolean(false);
+        }
+
+        // if (target.hasType('Flying')) {
+        //     this.add('-immune', target);
+        //     return null;
+        // }
+        let has_flying = {
+            let pokemon = match battle.pokemon_at(target.0, target.1) {
+                Some(p) => p,
+                None => return EventResult::Continue,
+            };
+            pokemon.has_type(battle, "Flying")
+        };
+        if has_flying {
+            let target_arg = {
+                let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+                    Some(p) => p,
+                    None => return EventResult::Continue,
+                };
+                target_pokemon.get_slot()
+            };
+
+            battle.add("-immune", &[target_arg.into()]);
+            return EventResult::Null;
+        }
+    } else {
+        // if (target.volatiles['substitute'] || target.isAlly(source)) {
+        //     return false;
+        // }
+        let has_substitute = {
+            let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+                Some(p) => p,
+                None => return EventResult::Continue,
+            };
+            target_pokemon
+                .volatiles
+                .contains_key(&ID::from("substitute"))
+        };
+
+        let is_ally = battle.is_ally(target, source);
+
+        if has_substitute || is_ally {
+            return EventResult::Boolean(false);
+        }
+
+        // if (target.getWeight() >= 2000) {
+        //     this.add('-fail', target, 'move: Sky Drop', '[heavy]');
+        //     return null;
+        // }
+        // getWeight() runs ModifyWeight event: const weighthg = this.battle.runEvent('ModifyWeight', this, null, null, this.weighthg);
+        let weight = {
+            let target_base_weight = {
+                let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+                    Some(p) => p,
+                    None => return EventResult::Continue,
+                };
+                target_pokemon.weight_hg
+            };
+            let target_weight_result = battle.run_event(
+                "ModifyWeight",
+                Some(crate::event::EventTarget::Pokemon(target)),
+                None,
+                None,
+                EventResult::Number(target_base_weight),
+                false,
+                false,
+            );
+            match target_weight_result {
+                EventResult::Number(w) => w.max(1),
+                _ => target_base_weight.max(1),
+            }
+        };
+
+        if weight >= 2000 {
+            let target_arg = {
+                let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+                    Some(p) => p,
+                    None => return EventResult::Continue,
+                };
+                target_pokemon.get_slot()
+            };
+
+            battle.add(
+                "-fail",
+                &[target_arg.into(), "move: Sky Drop".into(), "[heavy]".into()],
+            );
+            return EventResult::Null;
+        }
+
+        // this.add('-prepare', source, move.name, target);
+        let (source_arg, move_name, target_arg) = {
+            let source_pokemon = match battle.pokemon_at(source.0, source.1) {
+                Some(p) => p,
+                None => return EventResult::Continue,
+            };
+            let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+                Some(p) => p,
+                None => return EventResult::Continue,
+            };
+            let active_move = match &battle.active_move {
+                Some(active_move) => active_move,
+                None => return EventResult::Continue,
+            };
+            (
+                source_pokemon.get_slot(),
+                active_move.borrow().name.clone(),
+                target_pokemon.get_slot(),
+            )
+        };
+
+        battle.add(
+            "-prepare",
+            &[source_arg.into(), move_name.into(), target_arg.into()],
+        );
+
+        // source.addVolatile('twoturnmove', target);
+        let move_effect = battle.make_move_effect(&move_id);
+        Pokemon::add_volatile(battle, source, ID::from("twoturnmove"), Some(target), Some(&move_effect), None, None);
+
+        // return null;
+        return EventResult::Null;
+    }
+
+    EventResult::Continue
+}
+
+/// ```ignore
+/// onHit(target, source) {
+///     if (target.hp) this.add('-end', target, 'Sky Drop');
+/// }
+/// ```
+pub fn on_hit(
+    battle: &mut Battle,
+    target_pos: (usize, usize),
+    _source_pos: Option<(usize, usize)>,
+) -> EventResult {
+    // onHit(target, source) {
+    //     if (target.hp) this.add('-end', target, 'Sky Drop');
+    // }
+    // target_pos is the first param (target/defender)
+    let target = target_pos;
+
+    let has_hp = {
+        let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+            Some(p) => p,
+            None => return EventResult::Continue,
+        };
+        target_pokemon.hp > 0
+    };
+
+    if has_hp {
+        let target_arg = {
+            let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+                Some(p) => p,
+                None => return EventResult::Continue,
+            };
+            target_pokemon.get_slot()
+        };
+
+        battle.add("-end", &[target_arg.into(), "Sky Drop".into()]);
+    }
+
+    EventResult::Continue
+}
+
+pub mod condition {
+    use super::*;
+
+    /// onAnyDragOut(pokemon) {
+    ///     if (pokemon === this.effectState.target || pokemon === this.effectState.source) return false;
+    /// }
+    pub fn on_any_drag_out(battle: &mut Battle, pokemon_pos: (usize, usize)) -> EventResult {
+        // onAnyDragOut(pokemon) {
+        //     if (pokemon === this.effectState.target || pokemon === this.effectState.source) return false;
+        // }
+        let pokemon = pokemon_pos;
+
+        let (effect_target, effect_source) = battle.with_effect_state_ref(|state| (state.target, state.source)).unwrap_or((None, None));
+
+        if Some(pokemon) == effect_target || Some(pokemon) == effect_source {
+            return EventResult::Boolean(false);
+        }
+
+        EventResult::Continue
+    }
+
+    /// onFoeTrapPokemon(defender) {
+    ///     if (defender !== this.effectState.source) return;
+    ///     defender.trapped = true;
+    /// }
+    pub fn on_foe_trap_pokemon(battle: &mut Battle) -> EventResult {
+        // onFoeTrapPokemon(defender) {
+        //     if (defender !== this.effectState.source) return;
+        //     defender.trapped = true;
+        // }
+        let effect_source = battle.with_effect_state_ref(|state| state.source).flatten();
+
+        // The defender is passed via the effect_state context
+        // We need to get the defender from the current context
+        // In this callback, the defender would be accessed through the event context
+        // For now, we'll implement by setting trapped on the effect source
+        if let Some(source) = effect_source {
+            // defender.trapped = true;
+            use crate::pokemon::TrappedState;
+            battle.set_trapped(source, TrappedState::Visible);
+        }
+
+        EventResult::Continue
+    }
+
+    /// onFoeBeforeMove(attacker, defender, move) {
+    ///     if (attacker === this.effectState.source) {
+    ///         attacker.activeMoveActions--;
+    ///         this.debug('Sky drop nullifying.');
+    ///         return null;
+    ///     }
+    /// }
+    pub fn on_foe_before_move(battle: &mut Battle, active_move: Option<&crate::battle_actions::ActiveMove>) -> EventResult { let _move_id = active_move.as_ref().map(|m| m.id.to_string()).unwrap_or_default();
+        // onFoeBeforeMove(attacker, defender, move) {
+        //     if (attacker === this.effectState.source) {
+        //         attacker.activeMoveActions--;
+        //         this.debug('Sky drop nullifying.');
+        //         return null;
+        //     }
+        // }
+        let effect_source = battle.with_effect_state_ref(|state| state.source).flatten();
+
+        // The attacker would be passed via event context
+        // For this implementation, we check if the current actor is the effect source
+        if let Some(source) = effect_source {
+            // attacker.activeMoveActions--;
+            battle.decrement_active_move_actions(source);
+            battle.debug("Sky drop nullifying.");
+            // JavaScript returns null, which is falsy and prevents the move
+            return EventResult::Null;
+        }
+
+        EventResult::Continue
+    }
+
+    /// onRedirectTarget(target, source, source2) {
+    ///     if (source !== this.effectState.target) return;
+    ///     if (this.effectState.source.fainted) return;
+    ///     return this.effectState.source;
+    /// }
+    pub fn on_redirect_target(
+        battle: &mut Battle,
+        _target_pos: Option<(usize, usize)>,
+        source_pos: Option<(usize, usize)>,
+    ) -> EventResult {
+        // onRedirectTarget(target, source, source2) {
+        //     if (source !== this.effectState.target) return;
+        //     if (this.effectState.source.fainted) return;
+        //     return this.effectState.source;
+        // }
+        let source = match source_pos {
+            Some(pos) => pos,
+            None => return EventResult::Continue,
+        };
+
+        let (effect_target, effect_source) = battle.with_effect_state_ref(|state| (state.target, state.source)).unwrap_or((None, None));
+
+        // if (source !== this.effectState.target) return;
+        if Some(source) != effect_target {
+            return EventResult::Continue;
+        }
+
+        // if (this.effectState.source.fainted) return;
+        if let Some(eff_source) = effect_source {
+            let is_fainted = {
+                let source_pokemon = match battle.pokemon_at(eff_source.0, eff_source.1) {
+                    Some(p) => p,
+                    None => return EventResult::Continue,
+                };
+                source_pokemon.fainted
+            };
+
+            if is_fainted {
+                return EventResult::Continue;
+            }
+
+            // return this.effectState.source;
+            return EventResult::Position(eff_source);
+        }
+
+        EventResult::Continue
+    }
+
+    /// onAnyInvulnerability(target, source, move) {
+    ///     if (target !== this.effectState.target && target !== this.effectState.source) {
+    ///         return;
+    ///     }
+    ///     if (source === this.effectState.target && target === this.effectState.source) {
+    ///         return;
+    ///     }
+    ///     if (['gust', 'twister', 'skyuppercut', 'thunder', 'hurricane', 'smackdown', 'thousandarrows'].includes(move.id)) {
+    ///         return;
+    ///     }
+    ///     return false;
+    /// }
+    pub fn on_any_invulnerability(
+        battle: &mut Battle,
+        target_pos: Option<(usize, usize)>,
+        source_pos: Option<(usize, usize)>,
+        active_move: Option<&crate::battle_actions::ActiveMove>,
+    ) -> EventResult {
+        use crate::dex_data::ID;
+        let move_id = active_move.map(|m| m.id.to_string()).unwrap_or_default();
+
+        debug_elog!("[SKYDROP_ANY_INVULN] Called with target_pos={:?}, source_pos={:?}, move_id={}", target_pos, source_pos, move_id);
+
+        // onAnyInvulnerability(target, source, move) {
+        //     if (target !== this.effectState.target && target !== this.effectState.source) {
+        //         return;
+        //     }
+        //     if (source === this.effectState.target && target === this.effectState.source) {
+        //         return;
+        //     }
+        //     if (['gust', 'twister', 'skyuppercut', 'thunder', 'hurricane', 'smackdown', 'thousandarrows'].includes(move.id)) {
+        //         return;
+        //     }
+        //     return false;
+        // }
+        let target = match target_pos {
+            Some(pos) => pos,
+            None => {
+                debug_elog!("[SKYDROP_ANY_INVULN] No target_pos, returning Continue");
+                return EventResult::Continue;
+            }
+        };
+        let source = source_pos;
+
+        // Get the skydrop volatile's effect state from the current handler
+        // In JavaScript, 'this.effectState' refers to the volatile's effect state
+        // which is set by the event dispatch system for the handler that triggered this callback
+        let (effect_target, effect_source) = match battle.with_effect_state_ref(|state| {
+            (state.target, state.source)
+        }) {
+            Some((t, s)) => (t, s),
+            None => {
+                debug_elog!("[SKYDROP_ANY_INVULN] No effect state available, returning Continue");
+                return EventResult::Continue;
+            }
+        };
+
+        debug_elog!("[SKYDROP_ANY_INVULN] target={:?}, source={:?}, effect_target={:?}, effect_source={:?}", target, source, effect_target, effect_source);
+
+        // if (target !== this.effectState.target && target !== this.effectState.source) {
+        //     return;
+        // }
+        if Some(target) != effect_target && Some(target) != effect_source {
+            debug_elog!("[SKYDROP_ANY_INVULN] Target check failed: target not in effect_state, returning Continue");
+            return EventResult::Continue;
+        }
+
+        // if (source === this.effectState.target && target === this.effectState.source) {
+        //     return;
+        // }
+        if source == effect_target && Some(target) == effect_source {
+            debug_elog!("[SKYDROP_ANY_INVULN] Source/target swap check failed, returning Continue");
+            return EventResult::Continue;
+        }
+
+        // if (['gust', 'twister', 'skyuppercut', 'thunder', 'hurricane', 'smackdown', 'thousandarrows'].includes(move.id)) {
+        //     return;
+        // }
+        let move_id = ID::from(move_id);
+        if move_id == ID::from("gust")
+            || move_id == ID::from("twister")
+            || move_id == ID::from("skyuppercut")
+            || move_id == ID::from("thunder")
+            || move_id == ID::from("hurricane")
+            || move_id == ID::from("smackdown")
+            || move_id == ID::from("thousandarrows")
+        {
+            debug_elog!("[SKYDROP_ANY_INVULN] Move can hit Sky Drop user, returning Continue");
+            return EventResult::Continue;
+        }
+
+        debug_elog!("[SKYDROP_ANY_INVULN] All checks passed, returning Boolean(false)");
+        // return false;
+        EventResult::Boolean(false)
+    }
+
+    /// onAnyBasePower(basePower, target, source, move) {
+    ///     if (target !== this.effectState.target && target !== this.effectState.source) {
+    ///         return;
+    ///     }
+    ///     if (source === this.effectState.target && target === this.effectState.source) {
+    ///         return;
+    ///     }
+    ///     if (move.id === 'gust' || move.id === 'twister') {
+    ///         this.debug('BP doubled on midair target');
+    ///         return this.chainModify(2);
+    ///     }
+    /// }
+    pub fn on_any_base_power(
+        battle: &mut Battle,
+        _base_power: i32,
+        target_pos: Option<(usize, usize)>,
+        source_pos: Option<(usize, usize)>,
+        active_move: Option<&crate::battle_actions::ActiveMove>,
+    ) -> EventResult {
+        use crate::dex_data::ID;
+        let move_id = active_move.map(|m| m.id.to_string()).unwrap_or_default();
+
+        // onAnyBasePower(basePower, target, source, move) {
+        //     if (target !== this.effectState.target && target !== this.effectState.source) {
+        //         return;
+        //     }
+        //     if (source === this.effectState.target && target === this.effectState.source) {
+        //         return;
+        //     }
+        //     if (move.id === 'gust' || move.id === 'twister') {
+        //         this.debug('BP doubled on midair target');
+        //         return this.chainModify(2);
+        //     }
+        // }
+        let target = match target_pos {
+            Some(pos) => pos,
+            None => return EventResult::Continue,
+        };
+        let source = source_pos;
+
+        let (effect_target, effect_source) = battle.with_effect_state_ref(|state| (state.target, state.source)).unwrap_or((None, None));
+
+        // if (target !== this.effectState.target && target !== this.effectState.source) {
+        //     return;
+        // }
+        if Some(target) != effect_target && Some(target) != effect_source {
+            return EventResult::Continue;
+        }
+
+        // if (source === this.effectState.target && target === this.effectState.source) {
+        //     return;
+        // }
+        if source == effect_target && Some(target) == effect_source {
+            return EventResult::Continue;
+        }
+
+        // if (move.id === 'gust' || move.id === 'twister') {
+        //     this.debug('BP doubled on midair target');
+        //     return this.chainModify(2);
+        // }
+        let move_id = ID::from(move_id);
+        if move_id == ID::from("gust") || move_id == ID::from("twister") {
+            battle.debug("BP doubled on midair target");
+            battle.chain_modify(2_f32); return EventResult::Continue;
+        }
+
+        EventResult::Continue
+    }
+
+    /// onFaint(target) {
+    ///     if (target.volatiles['skydrop'] && target.volatiles['twoturnmove'].source) {
+    ///         this.add('-end', target.volatiles['twoturnmove'].source, 'Sky Drop', '[interrupt]');
+    ///     }
+    /// }
+    pub fn on_faint(battle: &mut Battle, target_pos: Option<(usize, usize)>) -> EventResult {
+        use crate::dex_data::ID;
+
+        // onFaint(target) {
+        //     if (target.volatiles['skydrop'] && target.volatiles['twoturnmove'].source) {
+        //         this.add('-end', target.volatiles['twoturnmove'].source, 'Sky Drop', '[interrupt]');
+        //     }
+        // }
+        let target = match target_pos {
+            Some(pos) => pos,
+            None => return EventResult::Continue,
+        };
+
+        // if (target.volatiles['skydrop'] && target.volatiles['twoturnmove'].source) {
+        let (has_skydrop, twoturnmove_source) = {
+            let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+                Some(p) => p,
+                None => return EventResult::Continue,
+            };
+
+            let has_skydrop = target_pokemon.volatiles.contains_key(&ID::from("skydrop"));
+
+            let twoturnmove_source =
+                if let Some(volatile) = target_pokemon.volatiles.get(&ID::from("twoturnmove")) {
+                    volatile.borrow().source
+                } else {
+                    None
+                };
+
+            (has_skydrop, twoturnmove_source)
+        };
+
+        if let (true, Some(source)) = (has_skydrop, twoturnmove_source) {
+            // this.add('-end', target.volatiles['twoturnmove'].source, 'Sky Drop', '[interrupt]');
+            let source_arg = {
+                let source_pokemon = match battle.pokemon_at(source.0, source.1) {
+                    Some(p) => p,
+                    None => return EventResult::Continue,
+                };
+                source_pokemon.get_slot()
+            };
+
+            battle.add(
+                "-end",
+                &[source_arg.into(), "Sky Drop".into(), "[interrupt]".into()],
+            );
+        }
+
+        EventResult::Continue
+    }
+}

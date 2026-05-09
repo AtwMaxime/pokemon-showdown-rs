@@ -1,0 +1,1394 @@
+use crate::*;
+use crate::event::EventResult;
+use crate::battle::{PriorityItem, BattleRequestState};
+use crate::battle_queue::MoveActionType;
+use crate::pokemon::MoveSlot;
+
+impl Battle {
+
+    /// Run a single action from the queue
+    /// Equivalent to battle.ts runAction()
+    //
+    // 	runAction(action: Action) {
+    // 		const pokemonOriginalHP = action.pokemon?.hp;
+    // 		let residualPokemon: (readonly [Pokemon, number])[] = [];
+    // 		// returns whether or not we ended in a callback
+    // 		switch (action.choice) {
+    // 		case 'start': {
+    // 			for (const side of this.sides) {
+    // 				if (side.pokemonLeft) side.pokemonLeft = side.pokemon.length;
+    // 				this.add('teamsize', side.id, side.pokemon.length);
+    // 			}
+    //
+    // 			this.add('start');
+    //
+    // 			// Change Zacian/Zamazenta into their Crowned formes
+    // 			for (const pokemon of this.getAllPokemon()) {
+    // 				let rawSpecies: Species | null = null;
+    // 				if (pokemon.species.id === 'zacian' && pokemon.item === 'rustedsword') {
+    // 					rawSpecies = this.dex.species.get('Zacian-Crowned');
+    // 				} else if (pokemon.species.id === 'zamazenta' && pokemon.item === 'rustedshield') {
+    // 					rawSpecies = this.dex.species.get('Zamazenta-Crowned');
+    // 				}
+    // 				if (!rawSpecies) continue;
+    // 				const species = pokemon.setSpecies(rawSpecies);
+    // 				if (!species) continue;
+    // 				pokemon.baseSpecies = rawSpecies;
+    // 				pokemon.details = pokemon.getUpdatedDetails();
+    // 				pokemon.setAbility(species.abilities['0'], null, null, true);
+    // 				pokemon.baseAbility = pokemon.ability;
+    //
+    // 				const behemothMove: { [k: string]: string } = {
+    // 					'Zacian-Crowned': 'behemothblade', 'Zamazenta-Crowned': 'behemothbash',
+    // 				};
+    // 				const ironHeadIndex = pokemon.baseMoves.indexOf('ironhead');
+    // 				if (ironHeadIndex >= 0) {
+    // 					const move = this.dex.moves.get(behemothMove[rawSpecies.name]);
+    // 					pokemon.baseMoveSlots[ironHeadIndex] = {
+    // 						move: move.name,
+    // 						id: move.id,
+    // 						pp: move.noPPBoosts ? move.pp : move.pp * 8 / 5,
+    // 						maxpp: move.noPPBoosts ? move.pp : move.pp * 8 / 5,
+    // 						target: move.target,
+    // 						disabled: false,
+    // 						disabledSource: '',
+    // 						used: false,
+    // 					};
+    // 					pokemon.moveSlots = pokemon.baseMoveSlots.slice();
+    // 				}
+    // 			}
+    //
+    // 			this.format.onBattleStart?.call(this);
+    // 			for (const rule of this.ruleTable.keys()) {
+    // 				if ('+*-!'.includes(rule.charAt(0))) continue;
+    // 				const subFormat = this.dex.formats.get(rule);
+    // 				subFormat.onBattleStart?.call(this);
+    // 			}
+    //
+    // 			for (const side of this.sides) {
+    // 				for (let i = 0; i < side.active.length; i++) {
+    // 					if (!side.pokemonLeft) {
+    // 						// forfeited before starting
+    // 						side.active[i] = side.pokemon[i];
+    // 						side.active[i].fainted = true;
+    // 						side.active[i].hp = 0;
+    // 					} else {
+    // 						this.actions.switchIn(side.pokemon[i], i);
+    // 					}
+    // 				}
+    // 			}
+    // 			for (const pokemon of this.getAllPokemon()) {
+    // 				this.singleEvent('Start', this.dex.conditions.getByID(pokemon.species.id), pokemon.speciesState, pokemon);
+    // 			}
+    // 			this.midTurn = true;
+    // 			break;
+    // 		}
+    //
+    // 		case 'move':
+    // 			if (!action.pokemon.isActive) return false;
+    // 			if (action.pokemon.fainted) return false;
+    // 			this.actions.runMove(action.move, action.pokemon, action.targetLoc, {
+    // 				sourceEffect: action.sourceEffect, zMove: action.zmove,
+    // 				maxMove: action.maxMove, originalTarget: action.originalTarget,
+    // 			});
+    // 			break;
+    // 		case 'megaEvo':
+    // 			this.actions.runMegaEvo(action.pokemon);
+    // 			break;
+    // 		case 'megaEvoX':
+    // 			this.actions.runMegaEvoX?.(action.pokemon);
+    // 			break;
+    // 		case 'megaEvoY':
+    // 			this.actions.runMegaEvoY?.(action.pokemon);
+    // 			break;
+    // 		case 'runDynamax':
+    // 			action.pokemon.addVolatile('dynamax');
+    // 			action.pokemon.side.dynamaxUsed = true;
+    // 			if (action.pokemon.side.allySide) action.pokemon.side.allySide.dynamaxUsed = true;
+    // 			break;
+    // 		case 'terastallize':
+    // 			this.actions.terastallize(action.pokemon);
+    // 			break;
+    // 		case 'beforeTurnMove':
+    // 			if (!action.pokemon.isActive) return false;
+    // 			if (action.pokemon.fainted) return false;
+    // 			this.debug('before turn callback: ' + action.move.id);
+    // 			const target = this.getTarget(action.pokemon, action.move, action.targetLoc);
+    // 			if (!target) return false;
+    // 			if (!action.move.beforeTurnCallback) throw new Error(`beforeTurnMove has no beforeTurnCallback`);
+    // 			action.move.beforeTurnCallback.call(this, action.pokemon, target);
+    // 			break;
+    // 		case 'priorityChargeMove':
+    // 			if (!action.pokemon.isActive) return false;
+    // 			if (action.pokemon.fainted) return false;
+    // 			this.debug('priority charge callback: ' + action.move.id);
+    // 			if (!action.move.priorityChargeCallback) throw new Error(`priorityChargeMove has no priorityChargeCallback`);
+    // 			action.move.priorityChargeCallback.call(this, action.pokemon);
+    // 			break;
+    //
+    // 		case 'event':
+    // 			this.runEvent(action.event!, action.pokemon);
+    // 			break;
+    // 		case 'team':
+    // 			if (action.index === 0) {
+    // 				action.pokemon.side.pokemon = [];
+    // 			}
+    // 			action.pokemon.side.pokemon.push(action.pokemon);
+    // 			action.pokemon.position = action.index;
+    // 			// we return here because the update event would crash since there are no active pokemon yet
+    // 			return;
+    //
+    // 		case 'pass':
+    // 			return;
+    // 		case 'instaswitch':
+    // 		case 'switch':
+    // 			if (action.choice === 'switch' && action.pokemon.status) {
+    // 				this.singleEvent('CheckShow', this.dex.abilities.getByID('naturalcure' as ID), null, action.pokemon);
+    // 			}
+    // 			if (this.actions.switchIn(action.target, action.pokemon.position, action.sourceEffect) === 'pursuitfaint') {
+    // 				// a pokemon fainted from Pursuit before it could switch
+    // 				if (this.gen <= 4) {
+    // 					// in gen 2-4, the switch still happens
+    // 					this.hint("Previously chosen switches continue in Gen 2-4 after a Pursuit target faints.");
+    // 					action.priority = -101;
+    // 					this.queue.unshift(action);
+    // 					break;
+    // 				} else {
+    // 					// in gen 5+, the switch is cancelled
+    // 					this.hint("A Pokemon can't switch between when it runs out of HP and when it faints");
+    // 					break;
+    // 				}
+    // 			}
+    // 			break;
+    // 		case 'revivalblessing':
+    // 			action.pokemon.side.pokemonLeft++;
+    // 			if (action.target.position < action.pokemon.side.active.length) {
+    // 				this.queue.addChoice({
+    // 					choice: 'instaswitch',
+    // 					pokemon: action.target,
+    // 					target: action.target,
+    // 				});
+    // 			}
+    // 			action.target.fainted = false;
+    // 			action.target.faintQueued = false;
+    // 			action.target.subFainted = false;
+    // 			action.target.status = '';
+    // 			action.target.hp = 1; // Needed so hp functions works
+    // 			action.target.sethp(action.target.maxhp / 2);
+    // 			this.add('-heal', action.target, action.target.getHealth, '[from] move: Revival Blessing');
+    // 			action.pokemon.side.removeSlotCondition(action.pokemon, 'revivalblessing');
+    // 			break;
+    // 		case 'runSwitch':
+    // 			this.actions.runSwitch(action.pokemon);
+    // 			break;
+    // 		case 'shift':
+    // 			if (!action.pokemon.isActive) return false;
+    // 			if (action.pokemon.fainted) return false;
+    // 			this.swapPosition(action.pokemon, 1);
+    // 			break;
+    //
+    // 		case 'beforeTurn':
+    // 			this.eachEvent('BeforeTurn');
+    // 			break;
+    // 		case 'residual':
+    // 			this.add('');
+    // 			this.clearActiveMove(true);
+    // 			this.updateSpeed();
+    // 			residualPokemon = this.getAllActive().map(pokemon => [pokemon, pokemon.getUndynamaxedHP()] as const);
+    // 			this.fieldEvent('Residual');
+    // 			if (!this.ended) this.add('upkeep');
+    // 			break;
+    // 		}
+    //
+    // 		// phazing (Roar, etc)
+    // 		for (const side of this.sides) {
+    // 			for (const pokemon of side.active) {
+    // 				if (pokemon.forceSwitchFlag) {
+    // 					if (pokemon.hp) this.actions.dragIn(pokemon.side, pokemon.position);
+    // 					pokemon.forceSwitchFlag = false;
+    // 				}
+    // 			}
+    // 		}
+    //
+    // 		this.clearActiveMove();
+    //
+    // 		// fainting
+    //
+    // 		this.faintMessages();
+    // 		if (this.ended) return true;
+    //
+    // 		// switching (fainted pokemon, U-turn, Baton Pass, etc)
+    //
+    // 		if (!this.queue.peek() || (this.gen <= 3 && ['move', 'residual'].includes(this.queue.peek()!.choice))) {
+    // 			// in gen 3 or earlier, switching in fainted pokemon is done after
+    // 			// every move, rather than only at the end of the turn.
+    // 			this.checkFainted();
+    // 		} else if (['megaEvo', 'megaEvoX', 'megaEvoY'].includes(action.choice) && this.gen === 7) {
+    // 			this.eachEvent('Update');
+    // 			// In Gen 7, the action order is recalculated for a Pokémon that mega evolves.
+    // 			for (const [i, queuedAction] of this.queue.list.entries()) {
+    // 				if (queuedAction.pokemon === action.pokemon && queuedAction.choice === 'move') {
+    // 					this.queue.list.splice(i, 1);
+    // 					queuedAction.mega = 'done';
+    // 					this.queue.insertChoice(queuedAction, true);
+    // 					break;
+    // 				}
+    // 			}
+    // 			return false;
+    // 		} else if (this.queue.peek()?.choice === 'instaswitch') {
+    // 			return false;
+    // 		}
+    //
+    // 		if (this.gen >= 5 && action.choice !== 'start') {
+    // 			this.eachEvent('Update');
+    // 			for (const [pokemon, originalHP] of residualPokemon) {
+    // 				const maxhp = pokemon.getUndynamaxedHP(pokemon.maxhp);
+    // 				if (pokemon.hp && pokemon.getUndynamaxedHP() <= maxhp / 2 && originalHP > maxhp / 2) {
+    // 					this.runEvent('EmergencyExit', pokemon);
+    // 				}
+    // 			}
+    // 		}
+    //
+    // 		if (action.choice === 'runSwitch') {
+    // 			const pokemon = action.pokemon;
+    // 			if (pokemon.hp && pokemon.hp <= pokemon.maxhp / 2 && pokemonOriginalHP! > pokemon.maxhp / 2) {
+    // 				this.runEvent('EmergencyExit', pokemon);
+    // 			}
+    // 		}
+    //
+    // 		const switches = this.sides.map(
+    // 			side => side.active.some(pokemon => pokemon && !!pokemon.switchFlag)
+    // 		);
+    //
+    // 		for (let i = 0; i < this.sides.length; i++) {
+    // 			let reviveSwitch = false; // Used to ignore the fake switch for Revival Blessing
+    // 			if (switches[i] && !this.canSwitch(this.sides[i])) {
+    // 				for (const pokemon of this.sides[i].active) {
+    // 					if (this.sides[i].slotConditions[pokemon.position]['revivalblessing']) {
+    // 						reviveSwitch = true;
+    // 						continue;
+    // 					}
+    // 					pokemon.switchFlag = false;
+    // 				}
+    // 				if (!reviveSwitch) switches[i] = false;
+    // 			} else if (switches[i]) {
+    // 				for (const pokemon of this.sides[i].active) {
+    // 					if (
+    // 						pokemon.hp && pokemon.switchFlag && pokemon.switchFlag !== 'revivalblessing' &&
+    // 						!pokemon.skipBeforeSwitchOutEventFlag
+    // 					) {
+    // 						this.runEvent('BeforeSwitchOut', pokemon);
+    // 						pokemon.skipBeforeSwitchOutEventFlag = true;
+    // 						this.faintMessages(); // Pokemon may have fainted in BeforeSwitchOut
+    // 						if (this.ended) return true;
+    // 						if (pokemon.fainted) {
+    // 							switches[i] = this.sides[i].active.some(sidePokemon => sidePokemon && !!sidePokemon.switchFlag);
+    // 						}
+    // 					}
+    // 				}
+    // 			}
+    // 		}
+    //
+    // 		for (const playerSwitch of switches) {
+    // 			if (playerSwitch) {
+    // 				this.makeRequest('switch');
+    // 				return true;
+    // 			}
+    // 		}
+    //
+    // 		if (this.gen < 5) this.eachEvent('Update');
+    //
+    // 		if (this.gen >= 8 && (this.queue.peek()?.choice === 'move' || this.queue.peek()?.choice === 'runDynamax')) {
+    // 			// In gen 8, speed is updated dynamically so update the queue's speed properties and sort it.
+    // 			this.updateSpeed();
+    // 			for (const queueAction of this.queue.list) {
+    // 				if (queueAction.pokemon) this.getActionSpeed(queueAction);
+    // 			}
+    // 			this.queue.sort();
+    // 		}
+    //
+    // 		return false;
+    // 	}
+    //
+    pub fn run_action(&mut self, action: &crate::battle_queue::Action) {
+        use crate::battle_queue::{Action, FieldActionType, PokemonActionType};
+
+        match action {
+            Action::Move(move_action) => {
+                use crate::battle_queue::MoveActionType;
+
+                let side_idx = move_action.side_index;
+                let poke_idx = move_action.pokemon_index;
+                let move_id = &move_action.move_id;
+                let target_loc = move_action.target_loc;
+
+                // Check if Pokemon can still act (is active and not fainted)
+                // JS: if (!action.pokemon.isActive) return false;
+                // JS: if (action.pokemon.fainted) return false;
+                let can_act = if let Some(side) = self.sides.get(side_idx) {
+                    if let Some(pokemon) = side.pokemon.get(poke_idx) {
+                        if pokemon.is_fainted() {
+                            debug_elog!("[RUN_ACTION] Pokemon is already fainted, skipping move execution: side={}, poke={}, move={}", side_idx, poke_idx, move_id.as_str());
+                            false  // Don't execute move, but continue to check_fainted
+                        } else {
+                            true  // Pokemon can act
+                        }
+                    } else {
+                        debug_elog!("[RUN_ACTION] Pokemon doesn't exist, returning early: side={}, poke={}, move={}", side_idx, poke_idx, move_id.as_str());
+                        return;
+                    }
+                } else {
+                    debug_elog!("[RUN_ACTION] Side doesn't exist, returning early: side={}, move={}", side_idx, move_id.as_str());
+                    return;
+                };
+
+                if can_act {
+                    match move_action.choice {
+                        MoveActionType::Move => {
+                            // JS: case 'move':
+                            // JS:     if (!action.pokemon.isActive) return false;
+                            // JS:     if (action.pokemon.fainted) return false;
+                            // JS:     this.actions.runMove(action.move, action.pokemon, action.targetLoc, {
+                            // JS:         sourceEffect: action.sourceEffect, zMove: action.zmove,
+                            // JS:         maxMove: action.maxMove, originalTarget: action.originalTarget,
+                            // JS:     });
+                            // JS:     break;
+                            debug_elog!("[RUN_ACTION] About to call run_move, move={}", move_id.as_str());
+                            // Look up move data before calling run_move
+                            // JavaScript creates a dummy move with exists: false for unknown moves
+                            // This is needed for virtual moves like 'recharge' which don't have
+                            // actual move data but need to be processed (e.g., for mustrecharge's onBeforeMove)
+                            let move_data_for_run = match self.dex.moves().get(move_id.as_str()) {
+                                Some(m) => m.clone(),
+                                None => {
+                                    debug_elog!("[RUN_ACTION] Creating dummy move for: {}", move_id.as_str());
+                                    // Create a minimal dummy move like JavaScript does
+                                    // JavaScript: move = new DataMove({ name: id, exists: false })
+                                    // Note: MoveData doesn't have exists field - that's only on ActiveMove
+                                    // run_move will convert this to ActiveMove
+                                    crate::dex::MoveData {
+                                        id: crate::dex_data::ID::from(move_id.as_str()),
+                                        name: move_id.to_string(),
+                                        // Default values for required fields
+                                        num: 0,
+                                        base_power: 0,
+                                        accuracy: crate::dex::Accuracy::Percent(100),
+                                        pp: 0,
+                                        category: "Status".to_string(),
+                                        move_type: "Normal".to_string(),
+                                        priority: 0,
+                                        target: "self".to_string(),
+                                        flags: crate::battle_actions::MoveFlags::default(),
+                                        ..Default::default()
+                                    }
+                                }
+                            };
+                            crate::battle_actions::run_move(
+                                self,
+                                &move_data_for_run,
+                                (side_idx, poke_idx),
+                                target_loc,
+                                move_action.source_effect.as_ref(), // source_effect from action queue (e.g., Round)
+                                move_action.zmove.clone(), // z_move
+                                false, // external_move
+                                move_action.max_move.clone(), // max_move
+                                None, // original_target
+                                move_action.prankster_boosted, // prankster_boosted flag from action queue
+                            );
+                            debug_elog!("[RUN_ACTION] After run_move, move={}", move_id.as_str());
+                        }
+                        MoveActionType::BeforeTurnMove => {
+                            // JS: case 'beforeTurnMove':
+                            // JS:     if (!action.pokemon.isActive) return false;
+                            // JS:     if (action.pokemon.fainted) return false;
+                            // JS:     this.debug('before turn callback: ' + action.move.id);
+                            // JS:     const target = this.getTarget(action.pokemon, action.move, action.targetLoc);
+                            // JS:     if (!target) return false;
+                            // JS:     if (!action.move.beforeTurnCallback) throw new Error(`beforeTurnMove has no beforeTurnCallback`);
+                            // JS:     action.move.beforeTurnCallback.call(this, action.pokemon, target);
+                            // JS:     break;
+                            debug_elog!("[RUN_ACTION] Executing beforeTurnMove callback for move={}", move_id.as_str());
+
+                            // Note: JavaScript gets the target and checks if it's valid, but the current Rust
+                            // dispatch function doesn't take a target parameter. The callbacks that need the
+                            // target obtain it themselves (e.g., from battle.active_target or other sources).
+                            // For now, we'll just call the dispatch function without the target.
+                            // TODO: Update dispatch_before_turn_callback to take target_loc parameter if needed
+
+                            // Create temporary ActiveMove for the dispatch
+                            let temp_active_move = self.dex.get_active_move(move_id.as_str());
+
+                            // Call the move's before_turn_callback
+                            let _result = crate::data::move_callbacks::dispatch_before_turn_callback(
+                                self,
+                                temp_active_move.as_ref(),
+                                (side_idx, poke_idx)
+                            );
+                            debug_elog!("[RUN_ACTION] beforeTurnMove callback returned {:?}", _result);
+                        }
+                        MoveActionType::PriorityChargeMove => {
+                            // JS: case 'priorityChargeMove':
+                            // JS:     if (!action.pokemon.isActive) return false;
+                            // JS:     if (action.pokemon.fainted) return false;
+                            // JS:     this.debug('priority charge callback: ' + action.move.id);
+                            // JS:     if (!action.move.priorityChargeCallback) throw new Error(`priorityChargeMove has no priorityChargeCallback`);
+                            // JS:     action.move.priorityChargeCallback.call(this, action.pokemon);
+                            // JS:     break;
+                            debug_elog!("[RUN_ACTION] Executing priorityChargeMove callback for move={}", move_id.as_str());
+
+                            // Create temporary ActiveMove for the dispatch
+                            let temp_active_move = self.dex.get_active_move(move_id.as_str());
+
+                            // Call the move's priority_charge_callback
+                            let _result = crate::data::move_callbacks::dispatch_priority_charge_callback(
+                                self,
+                                temp_active_move.as_ref(),
+                                (side_idx, poke_idx)
+                            );
+                            debug_elog!("[RUN_ACTION] priorityChargeMove callback returned {:?}", _result);
+                        }
+                    }
+                }
+            }
+            Action::Switch(switch_action) => {
+                let side_idx = switch_action.side_index;
+                let poke_idx = switch_action.pokemon_index;
+                let target_idx = switch_action.target_index;
+
+                // Handle RevivalBlessing separately from regular switches
+                if switch_action.choice == crate::battle_queue::SwitchActionType::RevivalBlessing {
+                    // JS: case 'revivalblessing':
+                    // JS:     action.pokemon.side.pokemonLeft++;
+                    // JS:     if (action.target.position < action.pokemon.side.active.length) {
+                    // JS:         this.queue.addChoice({
+                    // JS:             choice: 'instaswitch',
+                    // JS:             pokemon: action.target,
+                    // JS:             target: action.target,
+                    // JS:         });
+                    // JS:     }
+                    // JS:     action.target.fainted = false;
+                    // JS:     action.target.faintQueued = false;
+                    // JS:     action.target.subFainted = false;
+                    // JS:     action.target.status = '';
+                    // JS:     action.target.hp = 1; // Needed so hp functions works
+                    // JS:     action.target.sethp(action.target.maxhp / 2);
+                    // JS:     this.add('-heal', action.target, action.target.getHealth, '[from] move: Revival Blessing');
+                    // JS:     action.pokemon.side.removeSlotCondition(action.pokemon, 'revivalblessing');
+                    // JS:     break;
+
+                    // action.pokemon = poke_idx (the Pokemon that used Revival Blessing)
+                    // action.target = target_idx (the fainted Pokemon to revive)
+
+                    // JS: action.pokemon.side.pokemonLeft++;
+                    if let Some(side) = self.sides.get_mut(side_idx) {
+                        side.pokemon_left += 1;
+                    }
+
+                    // Get the target's position for the active slot check
+                    let target_position = if let Some(side) = self.sides.get(side_idx) {
+                        if let Some(pokemon) = side.pokemon.get(target_idx) {
+                            pokemon.position
+                        } else {
+                            usize::MAX
+                        }
+                    } else {
+                        usize::MAX
+                    };
+
+                    // Get active.length for comparison
+                    let active_length = if let Some(side) = self.sides.get(side_idx) {
+                        side.active.len()
+                    } else {
+                        0
+                    };
+
+                    // JS: if (action.target.position < action.pokemon.side.active.length) {
+                    if target_position < active_length {
+                        // JS: this.queue.addChoice({ choice: 'instaswitch', pokemon: action.target, target: action.target });
+                        // Queue an instaswitch for the revived Pokemon
+                        let instaswitch_action = crate::battle_queue::Action::Switch(
+                            crate::battle_queue::SwitchAction {
+                                choice: crate::battle_queue::SwitchActionType::InstaSwitch,
+                                order: 102, // instaswitch order
+                                priority: 0,
+                                speed: 0.0,
+                                sub_order: 0,
+                                effect_order: 0,
+                                pokemon_index: target_idx,
+                                side_index: side_idx,
+                                target_index: target_idx,
+                                source_effect: None,
+                            }
+                        );
+                        self.queue.add_choice_raw(instaswitch_action);
+                    }
+
+                    // Get maxhp for heal calculation
+                    let max_hp = if let Some(side) = self.sides.get(side_idx) {
+                        if let Some(pokemon) = side.pokemon.get(target_idx) {
+                            pokemon.maxhp
+                        } else {
+                            0
+                        }
+                    } else {
+                        0
+                    };
+
+                    // Revive the target Pokemon
+                    if let Some(side) = self.sides.get_mut(side_idx) {
+                        if let Some(pokemon) = side.pokemon.get_mut(target_idx) {
+                            // JS: action.target.fainted = false;
+                            pokemon.fainted = false;
+                            // JS: action.target.faintQueued = false;
+                            pokemon.faint_queued = false;
+                            // JS: action.target.subFainted = false;
+                            pokemon.sub_fainted = Some(false);
+                            // JS: action.target.status = '';
+                            pokemon.status = ID::new("");
+                            // JS: action.target.hp = 1; // Needed so hp functions work
+                            pokemon.hp = 1;
+                        }
+                    }
+
+                    // JS: action.target.sethp(action.target.maxhp / 2);
+                    // Use the battle's set_hp method which handles rounding properly
+                    let new_hp = max_hp / 2;
+                    if let Some(side) = self.sides.get_mut(side_idx) {
+                        if let Some(pokemon) = side.pokemon.get_mut(target_idx) {
+                            pokemon.hp = std::cmp::max(1, new_hp);
+                        }
+                    }
+
+                    // JS: this.add('-heal', action.target, action.target.getHealth, '[from] move: Revival Blessing');
+                    // Get heal message details
+                    let heal_msg = if let Some(side) = self.sides.get(side_idx) {
+                        if let Some(pokemon) = side.pokemon.get(target_idx) {
+                            let health = format!("{}/{}", pokemon.hp, pokemon.maxhp);
+                            let side_id = format!("p{}", side_idx + 1);
+                            Some((pokemon.fullname(&side_id), health))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+                    if let Some((name, health)) = heal_msg {
+                        self.add("-heal", &[name.as_str().into(), health.as_str().into(), "[from] move: Revival Blessing".into()]);
+                    }
+
+                    // JS: action.pokemon.side.removeSlotCondition(action.pokemon, 'revivalblessing');
+                    // The poke_idx here is the ACTIVE position index, not the team array index
+                    // We need to look up the team array index first
+                    let user_team_idx = if let Some(side) = self.sides.get(side_idx) {
+                        if let Some(&Some(team_idx)) = side.active.get(poke_idx) {
+                            team_idx
+                        } else {
+                            poke_idx // Fallback
+                        }
+                    } else {
+                        poke_idx
+                    };
+                    let user_position = if let Some(side) = self.sides.get(side_idx) {
+                        if let Some(pokemon) = side.pokemon.get(user_team_idx) {
+                            pokemon.position
+                        } else {
+                            0
+                        }
+                    } else {
+                        0
+                    };
+                    let revivalblessing_id = ID::new("revivalblessing");
+                    if let Some(side) = self.sides.get_mut(side_idx) {
+                        side.remove_slot_condition(user_position, &revivalblessing_id);
+                    }
+
+                    // Done with RevivalBlessing - do NOT call switch_in
+                } else {
+                    // Regular switch handling
+                    // JS: case 'switch':
+                    // JS:     if (action.choice === 'switch' && action.pokemon.status) {
+                    // JS:         this.singleEvent('CheckShow', this.dex.abilities.getByID('naturalcure'), null, action.pokemon);
+                    // JS:     }
+
+                    // Check if switching Pokemon has a status condition
+                    // Also get the Pokemon's actual position (slot index) - poke_idx is the team index
+                    let (has_status, pokemon_position) = if let Some(side) = self.sides.get(side_idx) {
+                        if let Some(pokemon) = side.pokemon.get(poke_idx) {
+                            (!pokemon.status.is_empty(), pokemon.position)
+                        } else {
+                            (false, 0)
+                        }
+                    } else {
+                        (false, 0)
+                    };
+
+                    if switch_action.choice == crate::battle_queue::SwitchActionType::Switch && has_status {
+                        let naturalcure_id = ID::new("naturalcure");
+                        let naturalcure_effect = self.make_ability_effect(&naturalcure_id);
+                        self.single_event("CheckShow", &naturalcure_effect, None, Some((side_idx, poke_idx)), None, None, None);
+                    }
+
+                    // JS: if (this.actions.switchIn(action.target, action.pokemon.position, action.sourceEffect) === 'pursuitfaint') {
+                    // Note: JavaScript uses action.pokemon.position (slot position), not the team index
+                    let source_effect = switch_action.source_effect.as_ref();
+                    let switch_result = crate::battle_actions::switch_in(
+                        self,
+                        side_idx,
+                        pokemon_position,  // position (slot index from pokemon.position, not team index)
+                        target_idx, // pokemon to switch in
+                        source_effect,
+                        false, // is_drag
+                    );
+
+                    if matches!(switch_result, crate::battle::SwitchResult::PursuitFaint) {
+                    // JS: // a pokemon fainted from Pursuit before it could switch
+                    // JS: if (this.gen <= 4) {
+                    // JS:     // in gen 2-4, the switch still happens
+                    // JS:     this.hint("Previously chosen switches continue in Gen 2-4 after a Pursuit target faints.");
+                    // JS:     action.priority = -101;
+                    // JS:     this.queue.unshift(action);
+                    // JS:     break;
+                    // JS: } else {
+                    // JS:     // in gen 5+, the switch is cancelled
+                    // JS:     this.hint("A Pokemon can't switch between when it runs out of HP and when it faints");
+                    // JS:     break;
+                    // JS: }
+                    if self.gen <= 4 {
+                        // In gen 2-4, the switch still happens
+                        self.hint("Previously chosen switches continue in Gen 2-4 after a Pursuit target faints.", false, None);
+                        // action.priority = -101 and queue.unshift(action)
+                        let mut requeue_action = action.clone();
+                        match &mut requeue_action {
+                            Action::Switch(switch_action) => {
+                                switch_action.priority = -101;
+                            },
+                            _ => {}
+                        }
+                        self.queue.unshift(requeue_action);
+                    } else {
+                        // In gen 5+, the switch is cancelled
+                        self.hint("A Pokemon can't switch between when it runs out of HP and when it faints", false, None);
+                        // Switch is cancelled - switch_in already handled this by returning PursuitFaint
+                    }
+                    }
+                }
+            }
+            Action::Field(field_action) => {
+                match field_action.choice {
+                    FieldActionType::Residual => {
+                        debug_elog!("[RUN_ACTION] Executing RESIDUAL action, turn={}", self.turn);
+                        // JS: case 'residual':
+                        // JS:     this.add('');
+                        // JS:     this.clearActiveMove(true);
+                        // JS:     this.updateSpeed();
+                        // JS:     residualPokemon = this.getAllActive().map(pokemon => [pokemon, pokemon.getUndynamaxedHP()] as const);
+                        // JS:     this.fieldEvent('Residual');
+                        // JS:     if (!this.ended) this.add('upkeep');
+                        // JS:     break;
+
+                        // JS: this.add('');
+                        self.add("", &[]);
+
+                        // JS: this.clearActiveMove(true);
+                        self.clear_active_move(true);
+
+                        // JS: this.updateSpeed();
+                        self.update_speed();
+
+                        // JS: residualPokemon = this.getAllActive().map(pokemon => [pokemon, pokemon.getUndynamaxedHP()] as const);
+                        // Track all active pokemon and their current HP before residual effects
+                        self.residual_pokemon.clear();
+                        for (side_idx, side) in self.sides.iter().enumerate() {
+                            for &opt_idx in &side.active {
+                                if let Some(poke_idx) = opt_idx {
+                                    if let Some(pokemon) = side.pokemon.get(poke_idx) {
+                                        if pokemon.hp > 0 {
+                                            self.residual_pokemon.push((side_idx, poke_idx, pokemon.hp));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // JS: this.fieldEvent('Residual');
+                        // NOTE: JavaScript ONLY calls fieldEvent, NOT eachEvent!
+                        // fieldEvent handles all residual effects including items/abilities
+                        debug_elog!("[RUN_ACTION] About to call field_event('Residual'), turn={}", self.turn);
+                        self.field_event("Residual", None);
+                        debug_elog!("[RUN_ACTION] Returned from field_event('Residual'), turn={}", self.turn);
+
+                        // JS: if (!this.ended) this.add('upkeep');
+                        if !self.ended {
+                            self.add("upkeep", &[]);
+                        }
+                    }
+                    FieldActionType::BeforeTurn => {
+                        // JS: this.eachEvent('BeforeTurn');
+                        self.each_event("BeforeTurn", None, None);
+                    }
+                    FieldActionType::Start => {
+                        // JS: for (const side of this.sides) { if (side.pokemonLeft) side.pokemonLeft = side.pokemon.length; this.add('teamsize', side.id, side.pokemon.length); }
+                        for side_idx in 0..self.sides.len() {
+                            let team_size = self.sides[side_idx].pokemon.len();
+                            if self.sides[side_idx].pokemon_left > 0 {
+                                self.sides[side_idx].pokemon_left = team_size;
+                            }
+                            let side_id = format!("p{}", side_idx + 1);
+                            self.add("teamsize", &[side_id.into(), team_size.to_string().into()]);
+                        }
+
+                        // JS: this.add('start');
+                        self.add("start", &[]);
+
+                        // JS: // Change Zacian/Zamazenta into their Crowned formes
+                        // JS: for (const pokemon of this.getAllPokemon()) { ... }
+                        // Collect all pokemon positions first to avoid borrow issues
+                        let all_pokemon_positions: Vec<(usize, usize)> = self
+                            .sides
+                            .iter()
+                            .enumerate()
+                            .flat_map(|(side_idx, side)| {
+                                (0..side.pokemon.len()).map(move |poke_idx| (side_idx, poke_idx))
+                            })
+                            .collect();
+
+                        for (side_idx, poke_idx) in all_pokemon_positions.clone() {
+                            // JS: let rawSpecies: Species | null = null;
+                            // JS: if (pokemon.species.id === 'zacian' && pokemon.item === 'rustedsword') {
+                            // JS:     rawSpecies = this.dex.species.get('Zacian-Crowned');
+                            // JS: } else if (pokemon.species.id === 'zamazenta' && pokemon.item === 'rustedshield') {
+                            // JS:     rawSpecies = this.dex.species.get('Zamazenta-Crowned');
+                            // JS: }
+                            let (species_id, item) = {
+                                let pokemon = &self.sides[side_idx].pokemon[poke_idx];
+                                (pokemon.species_id.clone(), pokemon.item.clone())
+                            };
+
+                            let new_species = if species_id.as_str() == "zacian" && item.as_str() == "rustedsword" {
+                                Some(ID::new("zaciancrowned"))
+                            } else if species_id.as_str() == "zamazenta" && item.as_str() == "rustedshield" {
+                                Some(ID::new("zamazentacrowned"))
+                            } else {
+                                None
+                            };
+
+                            // JS: if (!rawSpecies) continue;
+                            if new_species.is_none() {
+                                continue;
+                            }
+                            let new_species = new_species.unwrap();
+
+                            // JS: const species = pokemon.setSpecies(rawSpecies);
+                            // JS: if (!species) continue;
+                            // Use set_species_pos instead of set_species to ensure correct team lookup
+                            let success = Pokemon::set_species_pos(
+                                self,
+                                (side_idx, poke_idx),
+                                &new_species,
+                                None,
+                                false
+                            );
+
+                            if !success {
+                                continue;
+                            }
+
+                            // JS: pokemon.baseSpecies = rawSpecies;
+                            self.sides[side_idx].pokemon[poke_idx].base_species = new_species.clone();
+
+                            // JS: pokemon.details = pokemon.getUpdatedDetails();
+                            let details = self.sides[side_idx].pokemon[poke_idx].get_updated_details();
+                            self.sides[side_idx].pokemon[poke_idx].details = details;
+
+                            // JS: pokemon.setAbility(species.abilities['0'], null, null, true);
+                            // Get the species and its ability
+                            let (_species_id, ability_id) = {
+                                let pokemon = &self.sides[side_idx].pokemon[poke_idx];
+                                let species = self.dex.species.get(&pokemon.species_id);
+                                let ability_0 = species.and_then(|s| s.abilities.slot0.clone());
+                                (pokemon.species_id.clone(), ability_0)
+                            };
+
+                            if let Some(ability_str) = ability_id {
+                                let ability = ID::new(&ability_str);
+                                Pokemon::set_ability(self, (side_idx, poke_idx), ability, None, None, true, false);
+                            }
+
+                            // JS: pokemon.baseAbility = pokemon.ability;
+                            let ability = self.sides[side_idx].pokemon[poke_idx].ability.clone();
+                            self.sides[side_idx].pokemon[poke_idx].base_ability = ability;
+
+                            // JS: const behemothMove: { [k: string]: string } = {
+                            // JS:     'Zacian-Crowned': 'behemothblade', 'Zamazenta-Crowned': 'behemothbash',
+                            // JS: };
+                            // JS: const ironHeadIndex = pokemon.baseMoves.indexOf('ironhead');
+                            // JS: if (ironHeadIndex >= 0) { ... replace with behemoth move ... }
+                            let behemoth_move_id = if new_species.as_str() == "zaciancrowned" {
+                                Some(ID::new("behemothblade"))
+                            } else if new_species.as_str() == "zamazentacrowned" {
+                                Some(ID::new("behemothbash"))
+                            } else {
+                                None
+                            };
+
+                            if let Some(behemoth_id) = behemoth_move_id {
+                                // Find Iron Head in base moves
+                                let pokemon = &mut self.sides[side_idx].pokemon[poke_idx];
+                                if let Some(iron_head_index) = pokemon.base_move_slots.iter().position(|slot| slot.id.as_str() == "ironhead") {
+                                    // Get the behemoth move data
+                                    if let Some(behemoth_move) = self.dex.moves.get(&behemoth_id) {
+                                        // JS: pokemon.baseMoveSlots[ironHeadIndex] = { move: move.name, id: move.id, pp: ..., maxpp: ..., target: ..., disabled: false, disabledSource: '', used: false }
+                                        let pp = if behemoth_move.no_pp_boosts {
+                                            behemoth_move.pp
+                                        } else {
+                                            behemoth_move.pp * 8 / 5
+                                        } as u8;
+
+                                        pokemon.base_move_slots[iron_head_index] = MoveSlot {
+                                            id: behemoth_id.clone(),
+                                            move_name: behemoth_move.name.clone(),
+                                            pp,
+                                            maxpp: pp,
+                                            target: Some(behemoth_move.target.clone()),
+                                            disabled: false,
+                                            disabled_source: Some(String::new()),
+                                            used: false,
+                                            virtual_move: false,
+                                        };
+
+                                        // JS: pokemon.moveSlots = pokemon.baseMoveSlots.slice();
+                                        pokemon.move_slots = pokemon.base_move_slots.clone();
+                                    }
+                                }
+                            }
+                        }
+
+                        // JS: this.format.onBattleStart?.call(this);
+                        // JavaScript formats can have onBattleStart callbacks
+                        // These cannot be deserialized from JSON - must be registered separately
+                        // For now, emit an event that format-specific code can hook into
+                        self.run_event("BattleStart", None, None, None, EventResult::Continue, false, false);
+
+                        // JS: for (const rule of this.ruleTable.keys()) { ... }
+                        if let Some(ref rule_table) = self.rule_table {
+                            let rule_keys: Vec<String> = rule_table.keys().cloned().collect();
+
+                            for rule in rule_keys {
+                                // Skip rules starting with +, *, -, !
+                                if let Some(first_char) = rule.chars().next() {
+                                    if first_char == '+'
+                                        || first_char == '*'
+                                        || first_char == '-'
+                                        || first_char == '!'
+                                    {
+                                        continue;
+                                    }
+                                }
+
+                                // JS: const subFormat = this.dex.formats.get(rule);
+                                // JS: subFormat.onBattleStart?.call(this);
+                                // Emit event for rule-specific battle start hooks
+                                self.run_event(
+                                    &format!("RuleBattleStart:{}", rule),
+                                    None,
+                                    None,
+                                    None,
+                                    EventResult::Continue,
+                                    false,
+                                    false
+                                );
+                            }
+                        }
+
+                        // JS: for (const side of this.sides) { for (let i = 0; i < side.active.length; i++) { this.actions.switchIn(side.pokemon[i], i); } }
+                        // JS: for (const side of this.sides) {
+                        // JS:     for (let i = 0; i < side.active.length; i++) {
+                        // JS:         if (!side.pokemonLeft) {
+                        // JS:             // forfeited before starting
+                        // JS:             side.active[i] = side.pokemon[i];
+                        // JS:             side.active[i].fainted = true;
+                        // JS:             side.active[i].hp = 0;
+                        // JS:         } else {
+                        // JS:             this.actions.switchIn(side.pokemon[i], i);
+                        // JS:         }
+                        // JS:     }
+                        // JS: }
+                        for side_idx in 0..self.sides.len() {
+                            let active_len = self.sides[side_idx].active.len();
+                            let pokemon_left = self.sides[side_idx].pokemon_left;
+
+                            for slot in 0..active_len {
+                                if pokemon_left == 0 {
+                                    // Forfeited before starting
+                                    self.sides[side_idx].active[slot] = Some(slot);
+                                    self.sides[side_idx].pokemon[slot].fainted = true;
+                                    self.sides[side_idx].pokemon[slot].hp = 0;
+                                } else {
+                                    // JS: this.actions.switchIn(side.pokemon[i], i);
+                                    crate::battle_actions::switch_in(self, side_idx, slot, slot, None, false);
+                                }
+                            }
+                        }
+
+                        // JS: for (const pokemon of this.getAllPokemon()) { this.singleEvent('Start', ...); }
+                        // JS: for (const pokemon of this.getAllPokemon()) {
+                        // JS:     this.singleEvent('Start', this.dex.conditions.getByID(pokemon.species.id), pokemon.speciesState, pokemon);
+                        // JS: }
+                        for (side_idx, poke_idx) in all_pokemon_positions {
+                            let species_id = self.sides[side_idx].pokemon[poke_idx].species_id.clone();
+                            let condition_effect = self.make_condition_effect(&species_id);
+                            self.single_event("Start", &condition_effect, None, Some((side_idx, poke_idx)), None, None, None);
+                        }
+
+                        // JS: this.midTurn = true;
+                        self.mid_turn = true;
+                    }
+                    FieldActionType::Pass => {
+                        // Pass action - do nothing
+                    }
+                }
+            }
+            Action::Team(_) => {
+                // Team preview action handled elsewhere
+            }
+            Action::Pokemon(poke_action) => {
+                use crate::battle_queue::PokemonActionType;
+
+                match poke_action.choice {
+                    PokemonActionType::RunSwitch => {
+                        // JS: const pokemonOriginalHP = action.pokemon?.hp;
+                        // Capture original HP before switch-in effects (entry hazards)
+                        let pokemon_original_hp = {
+                            if let Some(pokemon) = self.pokemon_at(poke_action.side_index, poke_action.pokemon_index) {
+                                pokemon.hp
+                            } else {
+                                0
+                            }
+                        };
+
+                        // JS: const switchersIn = [pokemon];
+                        let mut switchers_in = vec![(poke_action.side_index, poke_action.pokemon_index)];
+
+                        // JS: while (this.battle.queue.peek()?.choice === "runSwitch") {
+                        //         const nextSwitch = this.battle.queue.shift();
+                        //         switchersIn.push(nextSwitch.pokemon);
+                        //     }
+                        // Collect all consecutive RunSwitch actions
+                        loop {
+                            let should_extract = if let Some(action) = self.queue.peek() {
+                                matches!(action, Action::Pokemon(p) if matches!(p.choice, PokemonActionType::RunSwitch))
+                            } else {
+                                false
+                            };
+
+                            if !should_extract {
+                                break;
+                            }
+
+                            if let Some(Action::Pokemon(next_poke)) = self.queue.shift() {
+                                switchers_in.push((next_poke.side_index, next_poke.pokemon_index));
+                            }
+                        }
+
+                        // JS: const allActive = this.battle.getAllActive(true);
+                        let all_active = self.get_all_active(true);
+
+                        // JS: this.battle.speedSort(allActive);
+                        // Extract Pokemon speeds first to avoid borrow checker issues
+                        // IMPORTANT: Use pokemon.speed (modified action speed) NOT stored_stats.spe (raw stat)
+                        // JS uses pokemon.speed which is updated by updateSpeed() to be getActionSpeed()
+                        let speeds: Vec<i32> = all_active
+                            .iter()
+                            .map(|(s_idx, p_idx)| self.sides[*s_idx].pokemon[*p_idx].speed)
+                            .collect();
+
+                        // Now sort using the pre-extracted speeds
+                        let mut all_active_with_speeds: Vec<_> = all_active
+                            .into_iter()
+                            .zip(speeds.iter())
+                            .collect();
+
+                        self.speed_sort_with_callsite(&mut all_active_with_speeds, |(_, speed)| PriorityItem {
+                            order: None,
+                            priority: 0,
+                            fractional_priority: 0.0,
+                            speed: **speed as f64,
+                            sub_order: 0,
+                            effect_order: 0,
+                            index: 0,
+                        }, "run_action:switch");
+
+                        // JS: this.battle.speedOrder = allActive.map((a) => a.side.n * a.battle.sides.length + a.position);
+                        self.speed_order = all_active_with_speeds
+                            .iter()
+                            .map(|((s_idx, p_idx), _speed)| {
+                                s_idx * self.sides.len() + p_idx
+                            })
+                            .collect();
+
+                        // JS: this.battle.fieldEvent("SwitchIn", switchersIn);
+                        self.field_event_switch_in(&switchers_in);
+
+                        // JS: for (const poke of switchersIn) {
+                        //         if (!poke.hp) continue;
+                        //         poke.isStarted = true;
+                        //         poke.draggedIn = null;
+                        //     }
+                        for (s_idx, p_idx) in switchers_in {
+                            if let Some(pokemon) = self.sides[s_idx].pokemon.get_mut(p_idx) {
+                                if pokemon.hp <= 0 {
+                                    continue;
+                                }
+                                pokemon.is_started = true;
+                                pokemon.dragged_in = None;
+                            }
+                        }
+
+                        // JS: if (action.choice === 'runSwitch') {
+                        //         const pokemon = action.pokemon;
+                        //         if (pokemon.hp && pokemon.hp <= pokemon.maxhp / 2 && pokemonOriginalHP! > pokemon.maxhp / 2) {
+                        //             this.runEvent('EmergencyExit', pokemon);
+                        //         }
+                        //     }
+                        // Check if original action.pokemon dropped below 50% HP from entry hazards
+                        let (current_hp, max_hp) = {
+                            if let Some(pokemon) = self.pokemon_at(poke_action.side_index, poke_action.pokemon_index) {
+                                (pokemon.hp, pokemon.maxhp)
+                            } else {
+                                (0, 0)
+                            }
+                        };
+
+                        if current_hp > 0 && current_hp <= max_hp / 2 && pokemon_original_hp > max_hp / 2 {
+                            self.run_event(
+                                "EmergencyExit",
+                                Some(crate::event::EventTarget::Pokemon((poke_action.side_index, poke_action.pokemon_index))),
+                                None,
+                                None,
+                                EventResult::Continue,
+                                false,
+                                false,
+                            );
+                        }
+                    }
+                    _ => {
+                        // Other Pokemon actions (mega evo, terastallize, etc.)
+                    }
+                }
+            }
+        }
+
+        // JS: // phazing (Roar, etc) - battle.ts:2820-2828
+        // JS: // This happens AFTER each action is processed
+        // JS: for (const side of this.sides) {
+        // JS:     for (const pokemon of side.active) {
+        // JS:         if (pokemon.forceSwitchFlag) {
+        // JS:             if (pokemon.hp) this.actions.dragIn(pokemon.side, pokemon.position);
+        // JS:             pokemon.forceSwitchFlag = false;
+        // JS:         }
+        // JS:     }
+        // JS: }
+        for side_idx in 0..self.sides.len() {
+            let active_count = self.sides[side_idx].active.len();
+            for slot in 0..active_count {
+                // Get the pokemon index from the active array
+                let pokemon_idx = match self.sides[side_idx].active.get(slot).and_then(|&opt| opt) {
+                    Some(idx) => idx,
+                    None => continue,
+                };
+
+                let (should_drag_in, has_hp) = {
+                    let pokemon = &self.sides[side_idx].pokemon[pokemon_idx];
+                    (pokemon.force_switch_flag, pokemon.hp > 0)
+                };
+
+                if should_drag_in {
+                    if has_hp {
+                        crate::battle_actions::drag_in(self, side_idx, slot);
+                    }
+                    // Clear the flag
+                    self.sides[side_idx].pokemon[pokemon_idx].force_switch_flag = false;
+                }
+            }
+        }
+
+        // JS: this.clearActiveMove();
+        self.clear_active_move(false);
+
+        // JS: // fainting
+        // JS: this.faintMessages();
+        // JS: if (this.ended) return true;
+        self.faint_messages(false, false, true);
+        if self.ended {
+            return;
+        }
+
+        // Determine if this is a "start" action (used for Update event filtering)
+        let is_start_action = matches!(action, Action::Field(f) if matches!(f.choice, FieldActionType::Start));
+
+        // JS: if (!this.queue.peek() || (this.gen <= 3 && ['move', 'residual'].includes(this.queue.peek()!.choice))) {
+        //         this.checkFainted();
+        //     }
+        // In gen 3 or earlier, switching in fainted pokemon is done after every move
+        let should_check_fainted = self.queue.peek().is_none() || self.gen <= 3;
+        debug_elog!("[RUN_ACTION] After action, queue.peek()={:?}, should_check_fainted={}",
+            self.queue.peek().as_ref().map(|a| match a {
+                Action::Move(m) => format!("Move({})", m.move_id.as_str()),
+                Action::Switch(s) => format!("Switch({})", s.pokemon_index),
+                Action::Field(f) => format!("Field({:?})", f.choice),
+                _ => "Other".to_string(),
+            }),
+            should_check_fainted);
+        if should_check_fainted {
+            self.check_fainted();
+        }
+        // TODO: megaEvo case not needed yet (Gen 7 only)
+        // JS: } else if (['megaEvo', 'megaEvoX', 'megaEvoY'].includes(action.choice) && this.gen === 7) {
+        //         this.eachEvent('Update');
+        //         // In Gen 7, the action order is recalculated for a Pokémon that mega evolves.
+        //         ...
+        //         return false;
+        // JS: } else if (this.queue.peek()?.choice === 'instaswitch') {
+        //         return false;
+        //     }
+        // Check for instaswitch: if next action is instaswitch, return early
+        if let Some(Action::Switch(switch_action)) = self.queue.peek() {
+            if switch_action.choice == crate::battle_queue::SwitchActionType::InstaSwitch {
+                debug_elog!("[RUN_ACTION] Next action is instaswitch, returning early");
+                return;
+            }
+        }
+
+        // JS: if (this.gen >= 5 && action.choice !== "start") {
+        //         this.eachEvent("Update");
+        //         for (const [pokemon, originalHP] of residualPokemon) {
+        //             const maxhp = pokemon.getUndynamaxedHP(pokemon.maxhp);
+        //             if (pokemon.hp && pokemon.getUndynamaxedHP() <= maxhp / 2 && originalHP > maxhp / 2) {
+        //                 this.runEvent('EmergencyExit', pokemon);
+        //             }
+        //         }
+        //     }
+        // Call Update event for all actions except "start" in Gen 5+
+        if self.gen >= 5 && !is_start_action {
+            self.each_event("Update", None, None);
+
+            // Check if any residual pokemon dropped below 50% HP and trigger Emergency Exit
+            // Take ownership of residual_pokemon to avoid borrow issues
+            let residual_pokemon = std::mem::take(&mut self.residual_pokemon);
+            for (side_idx, poke_idx, original_hp) in residual_pokemon {
+                let (current_hp, max_hp) = {
+                    if let Some(pokemon) = self.pokemon_at(side_idx, poke_idx) {
+                        (pokemon.hp, pokemon.maxhp)
+                    } else {
+                        continue;
+                    }
+                };
+
+                // JS: if (pokemon.hp && pokemon.getUndynamaxedHP() <= maxhp / 2 && originalHP > maxhp / 2)
+                if current_hp > 0 && current_hp <= max_hp / 2 && original_hp > max_hp / 2 {
+                    self.run_event(
+                        "EmergencyExit",
+                        Some(crate::event::EventTarget::Pokemon((side_idx, poke_idx))),
+                        None,
+                        None,
+                        EventResult::Continue,
+                        false,
+                        false,
+                    );
+                }
+            }
+        }
+
+        // JS: const switches = this.sides.map(side => side.active.some(pokemon => pokemon && !!pokemon.switchFlag));
+        // Build switches array - check if each side has any Pokemon with switchFlag set
+        let mut switches: Vec<bool> = self.sides.iter().map(|side| {
+            side.active.iter().any(|&opt_idx| {
+                if let Some(poke_idx) = opt_idx {
+                    if let Some(pokemon) = side.pokemon.get(poke_idx) {
+                        return pokemon.switch_flag.is_some();
+                    }
+                }
+                false
+            })
+        }).collect();
+
+        // JS: for (let i = 0; i < this.sides.length; i++) {
+        for i in 0..self.sides.len() {
+            // JS: if (switches[i] && !this.canSwitch(this.sides[i])) {
+            // Note: canSwitch returns number of possible switches, 0 is falsy in JS
+            debug_elog!("[RUN_ACTION] Side {}: switches[i]={}, can_switch={}",
+                i, switches[i], self.can_switch(i));
+            if switches[i] && self.can_switch(i) == 0 {
+                debug_elog!("[RUN_ACTION] Side {} has fainted Pokemon but no switches - checking for revivalblessing", i);
+
+                // JS: let reviveSwitch = false;
+                // JS: for (const pokemon of this.sides[i].active) {
+                // JS:     if (this.sides[i].slotConditions[pokemon.position]['revivalblessing']) {
+                // JS:         reviveSwitch = true;
+                // JS:         continue;
+                // JS:     }
+                // JS:     pokemon.switchFlag = false;
+                // JS: }
+                // JS: if (!reviveSwitch) switches[i] = false;
+                let revivalblessing_id = ID::new("revivalblessing");
+                let mut revive_switch = false;
+
+                // Get active positions first
+                let active_positions: Vec<usize> = self.sides[i].active.iter()
+                    .filter_map(|&opt_idx| opt_idx)
+                    .collect();
+
+                for poke_idx in &active_positions {
+                    let pokemon_position = self.sides[i].pokemon[*poke_idx].position;
+                    let has_revivalblessing = self.sides[i].slot_conditions
+                        .get(pokemon_position)
+                        .map(|conditions| conditions.contains_key(&revivalblessing_id))
+                        .unwrap_or(false);
+
+                    if has_revivalblessing {
+                        debug_elog!("[RUN_ACTION] Side {} has revivalblessing slot condition at position {}", i, pokemon_position);
+                        revive_switch = true;
+                        continue;
+                    }
+                    self.sides[i].pokemon[*poke_idx].switch_flag = None;
+                }
+
+                if !revive_switch {
+                    debug_elog!("[RUN_ACTION] No revive switch, checking win");
+                    // When a side has fainted Pokemon but no Pokemon to switch to,
+                    // we need to check if the battle should end
+                    // JavaScript handles this through faintMessages() which calls checkWin()
+                    if self.check_win(None) {
+                        debug_elog!("[RUN_ACTION] check_win returned true, battle ended");
+                        return;
+                    }
+                    debug_elog!("[RUN_ACTION] check_win returned false, continuing");
+                    switches[i] = false;
+                } else {
+                    debug_elog!("[RUN_ACTION] revive_switch is true, keeping switches[{}] = true for revivalblessing", i);
+                }
+            } else if switches[i] {
+                // JS: for (const pokemon of this.sides[i].active) {
+                //         if (pokemon.hp && pokemon.switchFlag && pokemon.switchFlag !== 'revivalblessing' &&
+                //             !pokemon.skipBeforeSwitchOutEventFlag) {
+                //             this.runEvent('BeforeSwitchOut', pokemon);
+                //             pokemon.skipBeforeSwitchOutEventFlag = true;
+                //             this.faintMessages();
+                //             if (this.ended) return true;
+                //             if (pokemon.fainted) {
+                //                 switches[i] = this.sides[i].active.some(sidePokemon => sidePokemon && !!sidePokemon.switchFlag);
+                //             }
+                //         }
+                //     }
+                let active_positions: Vec<usize> = self.sides[i].active.iter()
+                    .filter_map(|&opt_idx| opt_idx)
+                    .collect();
+
+                for poke_idx in active_positions {
+                    let should_run_event = {
+                        let pokemon = &self.sides[i].pokemon[poke_idx];
+                        // JS: pokemon.hp && pokemon.switchFlag && pokemon.switchFlag !== 'revivalblessing'
+                        let switch_flag_not_revival = pokemon.switch_flag.as_ref()
+                            .map(|flag| flag != "revivalblessing")
+                            .unwrap_or(false);
+                        pokemon.hp > 0 && switch_flag_not_revival && !pokemon.skip_before_switch_out_event_flag
+                    };
+
+                    if should_run_event {
+                        // Set the flag first
+                        self.sides[i].pokemon[poke_idx].skip_before_switch_out_event_flag = true;
+
+                        // Run BeforeSwitchOut event
+                        self.run_event("BeforeSwitchOut", Some(crate::event::EventTarget::Pokemon((i, poke_idx))), None, None, EventResult::Continue, false, false);
+
+                        // Check faint messages
+                        self.faint_messages(false, false, true);
+
+                        if self.ended {
+                            return;
+                        }
+
+                        // Check if fainted and update switches
+                        if self.sides[i].pokemon[poke_idx].fainted {
+                            switches[i] = self.sides[i].active.iter().any(|&opt_idx| {
+                                if let Some(idx) = opt_idx {
+                                    if let Some(p) = self.sides[i].pokemon.get(idx) {
+                                        return p.switch_flag.is_some();
+                                    }
+                                }
+                                false
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        // JS: for (const playerSwitch of switches) {
+        //         if (playerSwitch) {
+        //             this.makeRequest('switch');
+        //             return true;
+        //         }
+        //     }
+        debug_elog!("[RUN_ACTION] Switches array: {:?}", switches);
+        for (_i, &player_switch) in switches.iter().enumerate() {
+            if player_switch {
+                debug_elog!("[RUN_ACTION] Side {} needs to switch, calling make_request(Switch)", _i);
+                self.make_request(Some(BattleRequestState::Switch));
+                return;
+            }
+        }
+
+        // JS: if (this.gen < 5) this.eachEvent('Update');
+        if self.gen < 5 {
+            self.each_event("Update", None, None);
+        }
+
+        // JS: if (this.gen >= 8 && (this.queue.peek()?.choice === "move" || this.queue.peek()?.choice === "runDynamax")) {
+        // JS:     this.updateSpeed();
+        // JS:     for (const queueAction of this.queue.list) {
+        // JS:         if (queueAction.pokemon) this.getActionSpeed(queueAction);
+        // JS:     }
+        // JS:     this.queue.sort();
+        // JS: }
+        if self.gen >= 8 {
+            let should_sort = if let Some(next_action) = self.queue.peek() {
+                // JS: this.queue.peek()?.choice === 'move' || this.queue.peek()?.choice === 'runDynamax'
+                // IMPORTANT: JavaScript only checks for choice === 'move', NOT 'priorityChargeMove' or 'beforeTurnMove'
+                // So we must only match MoveActionType::Move, not all MoveActions
+                let is_move_or_dynamax = match next_action {
+                    Action::Move(m) => matches!(m.choice, MoveActionType::Move),
+                    Action::Pokemon(p) => matches!(p.choice, PokemonActionType::RunDynamax),
+                    _ => false,
+                };
+                is_move_or_dynamax
+            } else {
+                false
+            };
+
+            if should_sort {
+                debug_elog!("[RUN_ACTION] Gen 8 queue re-sort: calling update_speed and sort_action_queue");
+                // JS: this.updateSpeed();
+                self.update_speed();
+
+                // JS: for (const queueAction of this.queue.list) {
+                // JS:     if (queueAction.pokemon) this.getActionSpeed(queueAction);
+                // JS: }
+                let mut list = std::mem::take(&mut self.queue.list);
+                for action in &mut list {
+                    if action.has_pokemon() {
+                        self.get_action_speed(action);
+                    }
+                }
+                self.queue.list = list;
+
+                debug_elog!("[RUN_ACTION] About to call sort_action_queue, queue.len()={}", self.queue.list.len());
+
+                // JS: this.queue.sort();
+                self.sort_action_queue();
+            }
+        }
+
+        debug_elog!("[RUN_ACTION] Completed, no switches needed");
+    }
+}

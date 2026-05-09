@@ -1,0 +1,22 @@
+// NOTE: This method is NOT in JavaScript - Rust-specific implementation
+
+use crate::battle_stream::BattleStream;
+use crate::battle_stream::BattleStreamOptions;
+use std::collections::VecDeque;
+
+impl BattleStream {
+
+    /// Create a new battle stream with options
+    /// Equivalent to BattleStream constructor in battle-stream.ts
+    pub fn with_options(options: BattleStreamOptions) -> Self {
+        Self {
+            battle: None,
+            output_queue: VecDeque::new(),
+            debug: options.debug,
+            no_catch: options.no_catch,
+            replay: options.replay,
+            keep_alive: options.keep_alive,
+            last_request: None,
+        }
+    }
+}

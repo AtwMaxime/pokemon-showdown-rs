@@ -1,0 +1,518 @@
+use crate::*;
+use crate::pokemon::MoveSlot;
+
+impl Pokemon {
+
+    /// Transform into another Pokemon
+    //
+    // 	transformInto(pokemon: Pokemon, effect?: Effect) {
+    // 		const species = pokemon.species;
+    // 		if (
+    // 			pokemon.fainted || this.illusion || pokemon.illusion || (pokemon.volatiles['substitute'] && this.battle.gen >= 5) ||
+    // 			(pokemon.transformed && this.battle.gen >= 2) || (this.transformed && this.battle.gen >= 5) ||
+    // 			species.name === 'Eternatus-Eternamax' ||
+    // 			(['Ogerpon', 'Terapagos'].includes(species.baseSpecies) && (this.terastallized || pokemon.terastallized)) ||
+    // 			this.terastallized === 'Stellar'
+    // 		) {
+    // 			return false;
+    // 		}
+    //
+    // 		if (this.battle.dex.currentMod === 'gen1stadium' && (
+    // 			species.name === 'Ditto' ||
+    // 			(this.species.name === 'Ditto' && pokemon.moves.includes('transform'))
+    // 		)) {
+    // 			return false;
+    // 		}
+    //
+    // 		if (!this.setSpecies(species, effect, true)) return false;
+    //
+    // 		this.transformed = true;
+    // 		this.weighthg = pokemon.weighthg;
+    //
+    // 		const types = pokemon.getTypes(true, true);
+    // 		this.setType(pokemon.volatiles['roost'] ? pokemon.volatiles['roost'].typeWas : types, true);
+    // 		this.addedType = pokemon.addedType;
+    // 		this.knownType = this.isAlly(pokemon) && pokemon.knownType;
+    // 		this.apparentType = pokemon.apparentType;
+    //
+    // 		let statName: StatIDExceptHP;
+    // 		for (statName in this.storedStats) {
+    // 			this.storedStats[statName] = pokemon.storedStats[statName];
+    // 			if (this.modifiedStats) this.modifiedStats[statName] = pokemon.modifiedStats![statName]; // Gen 1: Copy modified stats.
+    // 		}
+    // 		this.moveSlots = [];
+    // 		this.hpType = (this.battle.gen >= 5 ? this.hpType : pokemon.hpType);
+    // 		this.hpPower = (this.battle.gen >= 5 ? this.hpPower : pokemon.hpPower);
+    // 		this.timesAttacked = pokemon.timesAttacked;
+    // 		for (const moveSlot of pokemon.moveSlots) {
+    // 			let moveName = moveSlot.move;
+    // 			if (moveSlot.id === 'hiddenpower') {
+    // 				moveName = 'Hidden Power ' + this.hpType;
+    // 			}
+    // 			this.moveSlots.push({
+    // 				move: moveName,
+    // 				id: moveSlot.id,
+    // 				pp: moveSlot.maxpp === 1 ? 1 : 5,
+    // 				maxpp: this.battle.gen >= 5 ? (moveSlot.maxpp === 1 ? 1 : 5) : moveSlot.maxpp,
+    // 				target: moveSlot.target,
+    // 				disabled: false,
+    // 				used: false,
+    // 				virtual: true,
+    // 			});
+    // 		}
+    // 		let boostName: BoostID;
+    // 		for (boostName in pokemon.boosts) {
+    // 			this.boosts[boostName] = pokemon.boosts[boostName];
+    // 		}
+    // 		if (this.battle.gen >= 6) {
+    // 			// we need to remove all of the overlapping crit volatiles before adding any of them
+    // 			const volatilesToCopy = ['dragoncheer', 'focusenergy', 'gmaxchistrike', 'laserfocus'];
+    // 			for (const volatile of volatilesToCopy) this.removeVolatile(volatile);
+    // 			for (const volatile of volatilesToCopy) {
+    // 				if (pokemon.volatiles[volatile]) {
+    // 					this.addVolatile(volatile);
+    // 					if (volatile === 'gmaxchistrike') this.volatiles[volatile].layers = pokemon.volatiles[volatile].layers;
+    // 					if (volatile === 'dragoncheer') this.volatiles[volatile].hasDragonType = pokemon.volatiles[volatile].hasDragonType;
+    // 				}
+    // 			}
+    // 		}
+    // 		if (effect) {
+    // 			this.battle.add('-transform', this, pokemon, '[from] ' + effect.fullname);
+    // 		} else {
+    // 			this.battle.add('-transform', this, pokemon);
+    // 		}
+    // 		if (this.terastallized) {
+    // 			this.knownType = true;
+    // 			this.apparentType = this.terastallized;
+    // 		}
+    // 		if (this.battle.gen > 2) this.setAbility(pokemon.ability, this, null, true, true);
+    //
+    // 		// Change formes based on held items (for Transform)
+    // 		// Only ever relevant in Generation 4 since Generation 3 didn't have item-based forme changes
+    // 		if (this.battle.gen === 4) {
+    // 			if (this.species.num === 487) {
+    // 				// Giratina formes
+    // 				if (this.species.name === 'Giratina' && this.item === 'griseousorb') {
+    // 					this.formeChange('Giratina-Origin');
+    // 				} else if (this.species.name === 'Giratina-Origin' && this.item !== 'griseousorb') {
+    // 					this.formeChange('Giratina');
+    // 				}
+    // 			}
+    // 			if (this.species.num === 493) {
+    // 				// Arceus formes
+    // 				const item = this.getItem();
+    // 				const targetForme = (item?.onPlate ? 'Arceus-' + item.onPlate : 'Arceus');
+    // 				if (this.species.name !== targetForme) {
+    // 					this.formeChange(targetForme);
+    // 				}
+    // 			}
+    // 		}
+    //
+    // 		// Pokemon transformed into Ogerpon cannot Terastallize
+    // 		// restoring their ability to tera after they untransform is handled ELSEWHERE
+    // 		if (['Ogerpon', 'Terapagos'].includes(this.species.baseSpecies) && this.canTerastallize) this.canTerastallize = false;
+    //
+    // 		return true;
+    // 	}
+    //
+    pub fn transform_into(battle: &mut Battle, pokemon_pos: (usize, usize), target_pos: (usize, usize), effect_id: Option<&dex_data::ID>) -> bool {
+        debug_elog!("[TRANSFORM_INTO] ENTRY: pokemon={:?} transforming into target={:?}", pokemon_pos, target_pos);
+
+        // Extract gen value upfront (before any mutable borrows)
+        let gen = battle.gen;
+
+        // Phase 1: Extract target data immutably
+        // Note: target_types uses get_types_full(true, true) to match JS pokemon.getTypes(true, true)
+        // This properly handles ability-based type changes (RKS System, Multitype) at the time of transform
+        let (target_species_id, target_weight_hg, target_types, target_added_type, target_stored_stats,
+             target_move_slots, target_boosts, target_ability, target_has_substitute, target_transformed,
+             target_fainted, target_times_attacked, target_apparent_type, target_hp_type, target_hp_power,
+             target_base_species, target_terastallized, target_has_illusion) = {
+            let target = match battle.pokemon_at(target_pos.0, target_pos.1) {
+                Some(p) => p,
+                None => return false,
+            };
+
+            // JS: const types = pokemon.getTypes(true, true);
+            // First param (excludeAdded) = true, second param (preterastallized) = true
+            let types = target.get_types_full(battle, true, true);
+
+            (
+                target.species_id.clone(),
+                target.weight_hg,
+                types,
+                target.added_type.clone(),
+                target.stored_stats,
+                target.move_slots.clone(),
+                target.boosts,
+                target.ability.clone(),
+                target.has_volatile(&ID::new("substitute")),
+                target.transformed,
+                target.fainted,
+                target.times_attacked,
+                target.apparent_type.clone(),
+                target.hp_type.clone(),
+                target.hp_power,
+                target.base_species.clone(),
+                target.terastallized.clone(),
+                target.illusion.is_some(),
+            )
+        };
+
+        // Phase 2: Check self pokemon immutably
+        let self_terastallized = {
+            let self_pokemon = match battle.pokemon_at(pokemon_pos.0, pokemon_pos.1) {
+                Some(p) => p,
+                None => return false,
+            };
+
+            // JS: const species = pokemon.species;
+            // JS: if (pokemon.fainted || this.illusion || pokemon.illusion || ...) return false;
+            if self_pokemon.fainted || target_fainted {
+                return false;
+            }
+
+            // JS: this.illusion || pokemon.illusion
+            // If either the source or target has an active Illusion disguise, Transform fails
+            if self_pokemon.illusion.is_some() || target_has_illusion {
+                return false;
+            }
+
+            // JS: (pokemon.volatiles['substitute'] && this.battle.gen >= 5)
+            // ✅ NOW IMPLEMENTED: Gen >= 5 check for substitute
+            if target_has_substitute && gen >= 5 {
+                return false;
+            }
+
+            // JS: (pokemon.transformed && this.battle.gen >= 2)
+            // ✅ NOW IMPLEMENTED: Gen >= 2 check for target transformed
+            if target_transformed && gen >= 2 {
+                return false;
+            }
+
+            // JS: (this.transformed && this.battle.gen >= 5)
+            // ✅ NOW IMPLEMENTED: Gen >= 5 check for self transformed
+            if self_pokemon.transformed && gen >= 5 {
+                return false;
+            }
+
+            // JS: species.name === 'Eternatus-Eternamax'
+            // ✅ NOW IMPLEMENTED: Eternatus-Eternamax cannot be transformed into
+            if target_species_id.as_str() == "eternatuseternamax" {
+                return false;
+            }
+
+            // JS: (['Ogerpon', 'Terapagos'].includes(species.baseSpecies) && (this.terastallized || pokemon.terastallized))
+            // ✅ NOW IMPLEMENTED: Ogerpon/Terapagos terastallized check
+            let target_base = target_base_species.as_str();
+            if (target_base == "ogerpon" || target_base == "terapagos") &&
+               (self_pokemon.terastallized.is_some() || target_terastallized.is_some()) {
+                return false;
+            }
+
+            // JS: this.terastallized === 'Stellar'
+            // ✅ NOW IMPLEMENTED: Stellar tera check
+            if let Some(ref tera_type) = self_pokemon.terastallized {
+                if tera_type == "Stellar" {
+                    return false;
+                }
+            }
+
+            self_pokemon.terastallized.clone()
+        };
+
+        // Phase 3: Call setSpecies FIRST (this sets speed from NEW species' calculated stats)
+        // JS: if (!this.setSpecies(species, effect, true)) return false;
+        // setSpecies calculates stats using NEW species' baseStats with THIS pokemon's EVs/IVs/nature
+        // It sets storedStats and speed from those calculated stats
+        // AFTER setSpecies returns, we'll copy target's storedStats (overwriting what setSpecies set)
+        // But speed will remain at the value setSpecies calculated
+        let effect_id_for_set_species = effect_id.map(|e| e.clone());
+        if !Pokemon::set_species_pos(
+            battle,
+            pokemon_pos,
+            &target_species_id,
+            effect_id_for_set_species.as_ref(),
+            true, // isTransform = true
+        ) {
+            return false;
+        }
+
+        // Phase 4: Get mutable reference and apply transformation
+        let self_pokemon_mut = match battle.pokemon_at_mut(pokemon_pos.0, pokemon_pos.1) {
+            Some(p) => p,
+            None => return false,
+        };
+
+        // JS: if (this.battle.dex.currentMod === 'gen1stadium' && ...) return false;
+        // Note: Missing gen1stadium Ditto checks - would need Battle reference
+
+        // JS: this.transformed = true;
+        self_pokemon_mut.transformed = true;
+
+        // JS: this.weighthg = pokemon.weighthg;
+        // Note: setSpecies sets weight from species data, but JS then copies target's weight
+        self_pokemon_mut.weight_hg = target_weight_hg;
+
+        // JS: const types = pokemon.getTypes(true, true);
+        // JS: this.setType(pokemon.volatiles['roost'] ? pokemon.volatiles['roost'].typeWas : types, true);
+        // target_types was already computed via get_types_full(true, true) in Phase 1
+        // Note: roost volatile check is not implemented yet
+        self_pokemon_mut.types = target_types;
+
+        // JS: this.addedType = pokemon.addedType;
+        self_pokemon_mut.added_type = target_added_type;
+
+        // JS: this.knownType = this.isAlly(pokemon) && pokemon.knownType;
+        // Note: JavaScript knownType is boolean (is type publicly known), Rust known_type is Option<String> (what type is known for Illusion)
+        // Different semantics, so not setting known_type here
+
+        // JS: this.apparentType = pokemon.apparentType;
+        // ✅ NOW IMPLEMENTED: apparentType copying from target
+        self_pokemon_mut.apparent_type = target_apparent_type;
+
+        // JS: for (statName in this.storedStats) { this.storedStats[statName] = pokemon.storedStats[statName]; }
+        // Copy target's storedStats (overwrites what setSpecies calculated)
+        // IMPORTANT: In JavaScript, pokemon.speed is a SEPARATE field from storedStats.spe
+        // It's set by setSpecies to the calculated stat, but NOT updated here when storedStats is copied.
+        // The speed field is updated LATER by updateSpeed() which is called after the move action completes.
+        // So we should NOT update self_pokemon_mut.speed here - it will be updated by update_speed() later.
+        self_pokemon_mut.stored_stats = target_stored_stats.clone();
+        // DO NOT update speed here - it should remain at the setSpecies calculated value until updateSpeed() is called
+
+        // JS: if (this.modifiedStats) this.modifiedStats[statName] = pokemon.modifiedStats![statName];
+        // Note: Missing modifiedStats copying for Gen 1
+
+        // JS: this.moveSlots = [];
+        // JS: this.hpType = (this.battle.gen >= 5 ? this.hpType : pokemon.hpType);
+        // JS: this.hpPower = (this.battle.gen >= 5 ? this.hpPower : pokemon.hpPower);
+        // ✅ NOW IMPLEMENTED (Session 24 Part 58): hpType/hpPower conditional copying based on gen
+        if gen >= 5 {
+            // Gen >= 5: Keep self's hp_type and hp_power (no action needed, already set)
+        } else {
+            // Gen < 5: Copy target's hp_type and hp_power
+            self_pokemon_mut.hp_type = target_hp_type;
+            self_pokemon_mut.hp_power = target_hp_power;
+        }
+
+        // JS: this.timesAttacked = pokemon.timesAttacked;
+        // ✅ NOW IMPLEMENTED: timesAttacked copying
+        self_pokemon_mut.times_attacked = target_times_attacked;
+
+        // JS: for (const moveSlot of pokemon.moveSlots) {
+        // JS:     let moveName = moveSlot.move;
+        // JS:     if (moveSlot.id === 'hiddenpower') {
+        // JS:         moveName = 'Hidden Power ' + this.hpType;
+        // JS:     }
+        // Extract hp_type for Hidden Power formatting
+        let hp_type_for_moves = self_pokemon_mut.hp_type.clone();
+
+        // Copy moves with reduced PP
+        // ✅ NOW IMPLEMENTED (Session 24 Part 59): Hidden Power move name formatting with hpType
+        self_pokemon_mut.move_slots = target_move_slots
+            .iter()
+            .map(|slot| {
+                // Format move name for Hidden Power
+                let move_name = if slot.id.as_str() == "hiddenpower" {
+                    if !hp_type_for_moves.is_empty() {
+                        format!("Hidden Power {}", hp_type_for_moves)
+                    } else {
+                        slot.move_name.clone()
+                    }
+                } else {
+                    slot.move_name.clone()
+                };
+
+                MoveSlot {
+                    id: slot.id.clone(),
+                    move_name,
+                    // JS: pp: moveSlot.maxpp === 1 ? 1 : 5,
+                    // JS: maxpp: this.battle.gen >= 5 ? (moveSlot.maxpp === 1 ? 1 : 5) : moveSlot.maxpp,
+                    // ✅ NOW IMPLEMENTED: Gen check for maxpp calculation
+                    pp: if slot.maxpp == 1 { 1 } else { 5 },
+                    maxpp: if gen >= 5 {
+                        if slot.maxpp == 1 { 1 } else { 5 }
+                    } else {
+                        slot.maxpp
+                    },
+                    target: slot.target.clone(),
+                    disabled: false,
+                    disabled_source: None,
+                    used: false,
+                    virtual_move: true,
+                }
+            })
+            .collect();
+
+        // JS: for (boostName in pokemon.boosts) { this.boosts[boostName] = pokemon.boosts[boostName]; }
+        // Copy boosts
+        self_pokemon_mut.boosts = target_boosts;
+
+        // Release mutable reference before we need Battle access for volatiles
+        let _ = self_pokemon_mut;
+
+        // JS: if (this.battle.gen >= 6) {
+        // JS:     const volatilesToCopy = ['dragoncheer', 'focusenergy', 'gmaxchistrike', 'laserfocus'];
+        // JS:     for (const volatile of volatilesToCopy) this.removeVolatile(volatile);
+        // JS:     for (const volatile of volatilesToCopy) {
+        // JS:         if (pokemon.volatiles[volatile]) {
+        // JS:             this.addVolatile(volatile);
+        // JS:             if (volatile === 'gmaxchistrike') this.volatiles[volatile].layers = ...;
+        // JS:             if (volatile === 'dragoncheer') this.volatiles[volatile].hasDragonType = ...;
+        // JS:         }
+        // JS:     }
+        // JS: }
+        // ✅ NOW IMPLEMENTED (Session 24 Part 33): Gen 6+ crit volatile copying
+        if gen >= 6 {
+            let volatiles_to_copy = vec![
+                ID::new("dragoncheer"),
+                ID::new("focusenergy"),
+                ID::new("gmaxchistrike"),
+                ID::new("laserfocus"),
+            ];
+
+            // First pass: remove existing volatiles
+            for volatile_id in &volatiles_to_copy {
+                Pokemon::remove_volatile(battle, pokemon_pos, volatile_id);
+            }
+
+            // Second pass: check target and add if present
+            for volatile_id in &volatiles_to_copy {
+                // Check if target has this volatile and extract data
+                let (has_volatile, layers_data, dragon_type_data) = {
+                    let target = match battle.pokemon_at(target_pos.0, target_pos.1) {
+                        Some(p) => p,
+                        None => return false,
+                    };
+
+                    if let Some(volatile_state) = target.volatiles.get(volatile_id) {
+                        // Extract layers for gmaxchistrike
+                        let layers = if volatile_id.as_str() == "gmaxchistrike" {
+                            volatile_state.borrow().layers
+                        } else {
+                            None
+                        };
+
+                        // Extract hasDragonType for dragoncheer
+                        let has_dragon = if volatile_id.as_str() == "dragoncheer" {
+                            volatile_state.borrow().has_dragon_type
+                        } else {
+                            None
+                        };
+
+                        (true, layers, has_dragon)
+                    } else {
+                        (false, None, None)
+                    }
+                };
+
+                if has_volatile {
+                    // Add volatile to self
+                    Pokemon::add_volatile(battle, pokemon_pos, volatile_id.clone(), None, None, None, None);
+
+                    // Copy additional data fields
+                    if let Some(layers) = layers_data {
+                        let self_pokemon = match battle.pokemon_at_mut(pokemon_pos.0, pokemon_pos.1) {
+                            Some(p) => p,
+                            None => return false,
+                        };
+                        if let Some(volatile_state) = self_pokemon.volatiles.get_mut(volatile_id) {
+                            volatile_state.borrow_mut().layers = Some(layers);
+                        }
+                    }
+
+                    if let Some(has_dragon) = dragon_type_data {
+                        let self_pokemon = match battle.pokemon_at_mut(pokemon_pos.0, pokemon_pos.1) {
+                            Some(p) => p,
+                            None => return false,
+                        };
+                        if let Some(volatile_state) = self_pokemon.volatiles.get_mut(volatile_id) {
+                            volatile_state.borrow_mut().has_dragon_type = Some(has_dragon);
+                        }
+                    }
+                }
+            }
+        }
+
+        // JS: if (effect) {
+        // JS:     this.battle.add('-transform', this, pokemon, '[from] ' + effect.fullname);
+        // JS: } else {
+        // JS:     this.battle.add('-transform', this, pokemon);
+        // JS: }
+        // ✅ NOW IMPLEMENTED: battle.add('-transform') message with optional [from] effect
+        {
+            let self_ident = {
+                let self_pokemon = match battle.pokemon_at(pokemon_pos.0, pokemon_pos.1) {
+                    Some(p) => p,
+                    None => return false,
+                };
+                self_pokemon.get_slot()
+            };
+            let target_ident = {
+                let target_pokemon = match battle.pokemon_at(target_pos.0, target_pos.1) {
+                    Some(p) => p,
+                    None => return false,
+                };
+                target_pokemon.get_slot()
+            };
+
+            if let Some(effect) = effect_id {
+                // Add transform message with [from] effect
+                let from_str = format!("[from] ability: {}", effect.to_string());
+                battle.add(
+                    "-transform",
+                    &[
+                        self_ident.as_str().into(),
+                        target_ident.as_str().into(),
+                        from_str.into(),
+                    ],
+                );
+            } else {
+                // Add basic transform message
+                battle.add(
+                    "-transform",
+                    &[
+                        self_ident.as_str().into(),
+                        target_ident.as_str().into(),
+                    ],
+                );
+            }
+        }
+
+        // Get mutable reference again for final transformations
+        let self_pokemon_mut = match battle.pokemon_at_mut(pokemon_pos.0, pokemon_pos.1) {
+            Some(p) => p,
+            None => return false,
+        };
+
+        // JS: if (this.terastallized) {
+        // JS:     this.knownType = true;
+        // JS:     this.apparentType = this.terastallized;
+        // JS: }
+        // ✅ NOW IMPLEMENTED: terastallized apparentType update
+        if let Some(tera_type) = self_terastallized {
+            // JavaScript: this.apparentType = this.terastallized;
+            self_pokemon_mut.apparent_type = tera_type;
+        }
+        // Note: Not setting known_type as it has different semantics in Rust (Option<String> vs boolean)
+
+        // JS: if (this.battle.gen > 2) this.setAbility(pokemon.ability, this, null, true, true);
+        // ✅ NOW IMPLEMENTED: Proper setAbility call with parameters (gen > 2)
+        // JS parameters: (ability, source=this, sourceEffect=null, isFromFormeChange=true, isTransform=true)
+        if gen > 2 {
+            Pokemon::set_ability(battle, pokemon_pos, target_ability, Some(pokemon_pos), None, true, true);
+        }
+
+        // JS: // Change formes based on held items (for Transform)
+        // JS: if (this.battle.gen === 4) { ... Giratina/Arceus forme changes ... }
+        // Note: Missing Gen 4 Giratina/Arceus forme changes
+
+        // JS: if (['Ogerpon', 'Terapagos'].includes(this.species.baseSpecies) && this.canTerastallize)
+        // JS:     this.canTerastallize = false;
+        // Note: Missing Ogerpon/Terapagos canTerastallize blocking
+
+        // JS: return true;
+        debug_elog!("[TRANSFORM_INTO] SUCCESS: pokemon={:?}, new species={:?}", pokemon_pos, battle.pokemon_at(pokemon_pos.0, pokemon_pos.1).map(|p| (&p.species_id, p.speed)));
+        true
+    }
+}

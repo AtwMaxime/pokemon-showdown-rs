@@ -1,0 +1,1149 @@
+// NOTE: This method is NOT in JavaScript - Rust-specific implementation
+
+use crate::*;
+
+impl Battle {
+
+    /// Handle ability events
+    /// Rust helper method - JavaScript's singleEvent() directly invokes ability[`on${eventId}`] callbacks
+    /// This method dispatches to ability_callbacks module based on event name
+    /// Routes to ability-specific handlers for all event types (AfterBoost, ModifyDamage, etc.)
+    pub fn handle_ability_event(
+        &mut self,
+        event_id: &str,
+        ability_id: &ID,
+        target: Option<&crate::event::EventTarget>,
+    ) -> crate::event::EventResult {
+        use crate::data::ability_callbacks;
+        use crate::event::EventResult;
+
+        // Extract pokemon position or side index from EventTarget
+        let pokemon_pos = target.and_then(|t| t.as_pokemon()).unwrap_or((0, 0));
+        let side_idx = target.and_then(|t| t.as_side());
+
+        // Get Pokemon name for logging
+        let _pokemon_name = if let Some(pokemon) = self.pokemon_at(pokemon_pos.0, pokemon_pos.1) {
+            pokemon.name.clone()
+        } else {
+            "Unknown".to_string()
+        };
+
+        crate::trace_ability!("turn={}, ability='{}' on {}, event='{}'",
+            self.turn, ability_id.as_str(), _pokemon_name, event_id);
+
+        // Extract context from event for parameter wiring
+        // For SetStatus/AllySetStatus events, status ID comes from relay_var (String)
+        // For other events, effect_id comes from event.effect
+        let (event_source_pos, event_target_pos, event_effect_id, event_effect) = if let Some(ref event) = self.event {
+            let effect_str = event.effect.as_ref().map(|eff| eff.id.to_string()).unwrap_or_else(|| String::new());
+            let effect_clone = event.effect.clone();
+            (event.source, event.target, effect_str, effect_clone)
+        } else {
+            (None, None, String::new(), None)
+        };
+
+        // For SetStatus events, the status ID is passed via relay_var as String
+        // JavaScript: runEvent('SetStatus', this, source, sourceEffect, status)
+        // where status (the 5th param) becomes relay_var
+        let event_status_id = if let Some(ref event) = self.event {
+            match &event.relay_var {
+                Some(EventResult::String(s)) => s.clone(),
+                _ => event_effect_id.clone(),  // Fallback to effect_id for backward compatibility
+            }
+        } else {
+            String::new()
+        };
+
+        // Clone active_move to pass to dispatch functions
+        // IMPORTANT: For events like AfterMoveSecondarySelf, the event.effect contains the
+        // correct move (e.g., Assist), while self.active_move might have been changed by
+        // a called move (e.g., healbell called via Assist). We need to check:
+        // - If event.effect matches battle.active_move.borrow().id -> use battle.active_move (has runtime state like total_damage)
+        // - If event.effect differs -> look up from dex (correct flags for abilities that check move properties)
+        let active_move_clone = {
+            // First try to get the move from event.effect (the move passed to the event)
+            let event_move_id = self.event.as_ref()
+                .and_then(|e| e.effect.as_ref())
+                .filter(|eff| eff.effect_type == crate::battle::EffectType::Move)
+                .map(|eff| eff.id.clone());
+
+            if let Some(ref move_id) = event_move_id {
+                // Check if event's move ID matches battle.active_move
+                let active_move_matches = self.active_move.as_ref()
+                    .map(|am| am.borrow().id == *move_id)
+                    .unwrap_or(false);
+
+                if active_move_matches {
+                    // Same move - use battle.active_move which has runtime state (total_damage, etc.)
+                    // Clone the inner ActiveMove from SharedActiveMove
+                    self.active_move.as_ref().map(|am| am.borrow().clone())
+                } else {
+                    // Different move (e.g., Assist vs healbell) - look up from dex for correct flags
+                    if let Some(active_move) = self.dex.get_active_move(move_id.as_str()) {
+                        Some(active_move)
+                    } else {
+                        // Fallback to active_move if move not found in dex
+                        // Clone the inner ActiveMove from SharedActiveMove
+                        self.active_move.as_ref().map(|am| am.borrow().clone())
+                    }
+                }
+            } else {
+                // No event effect or not a move effect - use active_move
+                // Clone the inner ActiveMove from SharedActiveMove
+                self.active_move.as_ref().map(|am| am.borrow().clone())
+            }
+        };
+
+        // Extract relay variables from event
+        let (relay_var_int, _relay_var_float, relay_var_boost, relay_var_string) = if let Some(ref event) = self.event {
+            let relay_int = match &event.relay_var {
+                Some(EventResult::Number(n)) => *n,
+                _ => 0,
+            };
+            let relay_float = match &event.relay_var {
+                Some(EventResult::Float(f)) => *f,
+                _ => 0.0,
+            };
+            let relay_boost = match &event.relay_var {
+                Some(EventResult::Boost(b)) => Some(b.clone()),
+                _ => None,
+            };
+            let relay_string = match &event.relay_var {
+                Some(EventResult::String(s)) => s.clone(),
+                _ => String::new(),
+            };
+            (relay_int, relay_float, relay_boost, relay_string)
+        } else {
+            (0, 0.0, None, String::new())
+        };
+
+        let result = match event_id {
+            "AfterBoost" => {
+                let default_boost = crate::dex_data::BoostsTable::new();
+                let boost = relay_var_boost.as_ref().unwrap_or(&default_boost);
+                // effect_id comes from event.effect (e.g., "intimidate" when boost was caused by Intimidate)
+                ability_callbacks::dispatch_on_after_boost(self, ability_id.as_str(), boost, Some(pokemon_pos), event_source_pos, event_effect.as_ref())
+            }
+            "AfterEachBoost" => {
+                let default_boost = crate::dex_data::BoostsTable::new();
+                let boost = relay_var_boost.as_ref().unwrap_or(&default_boost);
+                ability_callbacks::dispatch_on_after_each_boost(
+                    self,
+                    ability_id.as_str(),
+                    boost,
+                    Some(pokemon_pos),
+                    event_source_pos,
+                    event_effect.as_ref(),
+                )
+            }
+            "AfterMoveSecondary" => ability_callbacks::dispatch_on_after_move_secondary(
+                self,
+                ability_id.as_str(),
+                pokemon_pos,
+                event_source_pos.unwrap_or((0, 0)),
+                active_move_clone.as_ref(),
+            ),
+            "AfterMoveSecondarySelf" => ability_callbacks::dispatch_on_after_move_secondary_self(
+                self,
+                ability_id.as_str(),
+                pokemon_pos,
+                event_target_pos.unwrap_or((0, 0)),
+                active_move_clone.as_ref(),
+            ),
+            "AfterSetStatus" => ability_callbacks::dispatch_on_after_set_status(
+                self,
+                ability_id.as_str(),
+                Some(event_status_id.as_str()),
+                Some(pokemon_pos),
+                event_source_pos,
+                event_effect.as_ref(),
+            ),
+            "AfterTerastallization" => ability_callbacks::dispatch_on_after_terastallization(
+                self,
+                ability_id.as_str(),
+                pokemon_pos,
+            ),
+            "AfterUseItem" => ability_callbacks::dispatch_on_after_use_item(
+                self,
+                ability_id.as_str(),
+                event_effect.as_ref().map(|e| e.id.as_str()),
+                pokemon_pos,
+            ),
+            "AllyAfterUseItem" => ability_callbacks::dispatch_on_ally_after_use_item(
+                self,
+                ability_id.as_str(),
+                event_effect.as_ref().map(|e| e.id.as_str()),
+                pokemon_pos,
+            ),
+            "AllyBasePower" => ability_callbacks::dispatch_on_ally_base_power(
+                self,
+                ability_id.as_str(),
+                relay_var_int,
+                event_target_pos,  // attacker = event.target
+                event_source_pos,  // defender = event.source
+                active_move_clone.as_ref(),
+            ),
+            "AllyBasePowerPriority" => ability_callbacks::dispatch_on_ally_base_power_priority(
+                self,
+                ability_id.as_str(),
+                relay_var_int,
+                event_target_pos,  // attacker = event.target
+                event_source_pos,  // defender = event.source
+                active_move_clone.as_ref(),
+            ),
+            "AllyFaint" => {
+                ability_callbacks::dispatch_on_ally_faint(self, ability_id.as_str(), Some(pokemon_pos))
+            }
+            "AllyModifyAtk" => ability_callbacks::dispatch_on_ally_modify_atk(
+                self,
+                ability_id.as_str(),
+                relay_var_int,
+                pokemon_pos,
+            ),
+            "AllyModifyAtkPriority" => ability_callbacks::dispatch_on_ally_modify_atk_priority(
+                self,
+                ability_id.as_str(),
+                relay_var_int,
+                pokemon_pos,
+            ),
+            "AllyModifySpD" => ability_callbacks::dispatch_on_ally_modify_sp_d(
+                self,
+                ability_id.as_str(),
+                relay_var_int,
+                pokemon_pos,
+            ),
+            "AllyModifySpDPriority" => ability_callbacks::dispatch_on_ally_modify_sp_d_priority(
+                self,
+                ability_id.as_str(),
+                relay_var_int,
+                pokemon_pos,
+            ),
+            "AllySetStatus" => ability_callbacks::dispatch_on_ally_set_status(
+                self,
+                ability_id.as_str(),
+                event_status_id.as_str(),
+                pokemon_pos,
+                event_source_pos,
+                event_effect.as_ref(),
+            ),
+            "AllyTryAddVolatile" => ability_callbacks::dispatch_on_ally_try_add_volatile(
+                self,
+                ability_id.as_str(),
+                Some(event_status_id.as_str()),
+                Some(pokemon_pos),
+                event_source_pos,
+                event_effect.as_ref(),
+            ),
+            "AllyTryBoost" => ability_callbacks::dispatch_on_ally_try_boost(
+                self,
+                ability_id.as_str(),
+                Some(pokemon_pos),
+                event_source_pos,
+                event_effect.as_ref(),
+            ),
+            "AllyTryHitSide" => ability_callbacks::dispatch_on_ally_try_hit_side(
+                self,
+                ability_id.as_str(),
+                Some(pokemon_pos),
+                event_source_pos,
+                active_move_clone.as_ref(),
+            ),
+            "AnyAccuracy" => ability_callbacks::dispatch_on_any_accuracy(
+                self,
+                ability_id.as_str(),
+                relay_var_int,
+                event_target_pos,  // Use event target (Pokemon being attacked), not ability holder
+                event_source_pos,
+                active_move_clone.as_ref(),
+            ),
+            "AnyAfterMega" => ability_callbacks::dispatch_on_any_after_mega(
+                self,
+                ability_id.as_str(),
+            ),
+            "AnyAfterMove" => ability_callbacks::dispatch_on_any_after_move(
+                self,
+                ability_id.as_str(),
+            ),
+            "AnyAfterSetStatus" => ability_callbacks::dispatch_on_any_after_set_status(
+                self,
+                ability_id.as_str(),
+                Some(event_status_id.as_str()),
+                event_target_pos,
+                event_source_pos,
+                event_effect.as_ref(),
+            ),
+            "AnyAfterTerastallization" => {
+                ability_callbacks::dispatch_on_any_after_terastallization(
+                    self,
+                    ability_id.as_str(),
+                )
+            }
+            "AnyBasePower" => ability_callbacks::dispatch_on_any_base_power(
+                self,
+                ability_id.as_str(),
+                relay_var_int,
+                event_target_pos,   // attacker = event.target (source in callback)
+                event_source_pos,   // defender = event.source (target in callback)
+                active_move_clone.as_ref(),
+            ),
+            "AnyBasePowerPriority" => ability_callbacks::dispatch_on_any_base_power_priority(
+                self,
+                ability_id.as_str(),
+                relay_var_int,
+                event_target_pos,   // attacker = event.target
+                event_source_pos,   // defender = event.source
+                active_move_clone.as_ref(),
+            ),
+            "AnyBeforeMove" => ability_callbacks::dispatch_on_any_before_move(
+                self,
+                ability_id.as_str(),
+            ),
+            "AnyDamage" => {
+                ability_callbacks::dispatch_on_any_damage(
+                    self,
+                    ability_id.as_str(),
+                    relay_var_int,
+                    Some(pokemon_pos),
+                    event_source_pos,
+                    event_effect.as_ref(),
+                )
+            }
+            "AnyFaint" => {
+                ability_callbacks::dispatch_on_any_faint(self, ability_id.as_str())
+            }
+            "AnyFaintPriority" => ability_callbacks::dispatch_on_any_faint_priority(
+                self,
+                ability_id.as_str(),
+            ),
+            "AnyInvulnerability" => ability_callbacks::dispatch_on_any_invulnerability(
+                self,
+                ability_id.as_str(),
+                event_target_pos,  // Use event target (Pokemon being attacked), not ability holder
+                event_source_pos,
+                active_move_clone.as_ref(),
+            ),
+            "AnyInvulnerabilityPriority" => {
+                ability_callbacks::dispatch_on_any_invulnerability_priority(
+                    self,
+                    ability_id.as_str(),
+                    event_target_pos,  // Use event target (Pokemon being attacked), not ability holder
+                    event_source_pos,
+                    active_move_clone.as_ref(),
+                )
+            }
+            "AnyModifyAccuracy" => ability_callbacks::dispatch_on_any_modify_accuracy(
+                self,
+                ability_id.as_str(),
+                relay_var_int,
+                Some(pokemon_pos),
+                event_source_pos,
+            ),
+            "AnyModifyAccuracyPriority" => {
+                ability_callbacks::dispatch_on_any_modify_accuracy_priority(self, ability_id.as_str(), 0, Some(pokemon_pos), None)
+            }
+            "AnyModifyAtk" => ability_callbacks::dispatch_on_any_modify_atk(
+                self,
+                ability_id.as_str(),
+                relay_var_int,
+                event_target_pos,       // source = attacker = event.target (for ModifyAtk)
+                Some(pokemon_pos),      // ability holder
+                active_move_clone.as_ref(),
+            ),
+            "AnyModifyBoost" => ability_callbacks::dispatch_on_any_modify_boost(
+                self,
+                ability_id.as_str(),
+                "",  // Note: boosts handled via relay_var_boost in event
+                // IMPORTANT: For onAnyModifyBoost(boosts, pokemon), `pokemon` is the event target
+                // (the Pokemon whose boosts are being modified), NOT the ability holder.
+                // The ability holder is accessed via effect_state.target inside the callback.
+                event_target_pos.unwrap_or(pokemon_pos),
+            ),
+            "AnyModifyDamage" => ability_callbacks::dispatch_on_any_modify_damage(
+                self,
+                ability_id.as_str(),
+                relay_var_int,
+                event_source_pos,
+                Some(pokemon_pos),
+                active_move_clone.as_ref(),
+            ),
+            "AnyModifyDef" => ability_callbacks::dispatch_on_any_modify_def(
+                self,
+                ability_id.as_str(),
+                relay_var_int,
+                event_target_pos,       // target = defender = event.target (for ModifyDef)
+                Some(pokemon_pos),      // ability holder
+                active_move_clone.as_ref(),
+            ),
+            "AnyModifySpA" => ability_callbacks::dispatch_on_any_modify_sp_a(
+                self,
+                ability_id.as_str(),
+                relay_var_int,
+                event_target_pos,       // source = attacker = event.target
+                Some(pokemon_pos),      // ability holder
+                active_move_clone.as_ref(),
+            ),
+            "AnyModifySpD" => ability_callbacks::dispatch_on_any_modify_sp_d(
+                self,
+                ability_id.as_str(),
+                relay_var_int,
+                event_target_pos,       // target = defender whose SpD is modified
+                Some(pokemon_pos),      // ability holder
+                active_move_clone.as_ref(),
+            ),
+            "AnyRedirectTarget" => ability_callbacks::dispatch_on_any_redirect_target(
+                self,
+                ability_id.as_str(),
+                Some(pokemon_pos),
+                event_source_pos,
+                event_target_pos,
+                active_move_clone.as_ref(),
+            ),
+            "AnySetWeather" => ability_callbacks::dispatch_on_any_set_weather(
+                self,
+                ability_id.as_str(),
+                Some(pokemon_pos),
+                event_source_pos,
+                // Weather ID comes from source_effect (Effect::weather(weather_id)), not relay_var
+                // JavaScript: onAnySetWeather(target, source, weather) - weather is the Effect
+                event_effect_id.as_str(),
+            ),
+            "AnySwitchIn" => {
+                ability_callbacks::dispatch_on_any_switch_in(self, ability_id.as_str())
+            }
+            "AnySwitchInPriority" => ability_callbacks::dispatch_on_any_switch_in_priority(
+                self,
+                ability_id.as_str(),
+            ),
+            "AnyTryMove" => {
+                ability_callbacks::dispatch_on_any_try_move(
+                    self,
+                    ability_id.as_str(),
+                    Some(pokemon_pos),
+                    event_source_pos,
+                    event_effect.as_ref(),
+                )
+            }
+            "AnyTryPrimaryHit" => ability_callbacks::dispatch_on_any_try_primary_hit(
+                self,
+                ability_id.as_str(),
+                Some(pokemon_pos),
+                event_source_pos,
+                active_move_clone.as_ref(),
+            ),
+            "BasePower" => {
+                // BasePower is called via run_event, so attacker is in event.target, defender is in event.source
+                let attacker_pos = self.event.as_ref().and_then(|e| e.target).unwrap_or((0, 0));
+                let defender_pos = self.event.as_ref().and_then(|e| e.source).unwrap_or((0, 0));
+
+                // Get base_power from relay_var
+                let base_power = self.event.as_ref().and_then(|e| match &e.relay_var {
+                    Some(EventResult::Number(n)) => Some(*n),
+                    _ => None
+                }).unwrap_or(0);
+
+                // Get move_id from active_move (extract to owned String to avoid borrow issues)
+                let move_id_owned = self.active_move.as_ref().map(|m| m.borrow().id.to_string()).unwrap_or_default();
+                let _move_id = move_id_owned.as_str();
+
+                ability_callbacks::dispatch_on_base_power(self, ability_id.as_str(), base_power, attacker_pos, defender_pos, active_move_clone.as_ref())
+            }
+            "BasePowerPriority" => ability_callbacks::dispatch_on_base_power_priority(
+                self,
+                ability_id.as_str(),
+                0, pokemon_pos, pokemon_pos,
+            active_move_clone.as_ref(),
+            ),
+            "BeforeMove" => {
+                ability_callbacks::dispatch_on_before_move(self, ability_id.as_str(), pokemon_pos, event_target_pos, active_move_clone.as_ref())
+            }
+            "BeforeMovePriority" => ability_callbacks::dispatch_on_before_move_priority(
+                self,
+                ability_id.as_str(),
+                pokemon_pos,
+                event_target_pos,
+                active_move_clone.as_ref(),
+            ),
+            "BeforeSwitchIn" => ability_callbacks::dispatch_on_before_switch_in(
+                self,
+                ability_id.as_str(),
+                pokemon_pos,
+            ),
+            "ChangeBoost" => {
+                let (target_pos, source_pos) = if let Some(ref event) = self.event {
+                    (event.target, event.source)
+                } else {
+                    (Some(pokemon_pos), None)
+                };
+                ability_callbacks::dispatch_on_change_boost(self, ability_id.as_str(), target_pos, source_pos, event_effect.as_ref())
+            }
+            "CheckShow" => {
+                ability_callbacks::dispatch_on_check_show(self, ability_id.as_str(), pokemon_pos)
+            }
+            "CriticalHit" => {
+                ability_callbacks::dispatch_on_critical_hit(self, ability_id.as_str(), Some(pokemon_pos), event_source_pos, active_move_clone.as_ref())
+            }
+            "Damage" => {
+                ability_callbacks::dispatch_on_damage(
+                    self,
+                    ability_id.as_str(),
+                    relay_var_int,
+                    pokemon_pos,
+                    event_source_pos,
+                    event_effect.as_ref(),
+                )
+            }
+            "DamagePriority" => ability_callbacks::dispatch_on_damage_priority(
+                self,
+                ability_id.as_str(),
+                relay_var_int,
+                pokemon_pos,
+                event_source_pos,
+                event_effect.as_ref(),
+            ),
+            "DamagingHit" => {
+                // Get move_id, source, and damage from current event context
+                let (move_id_str, source_pos, damage) = self.event.as_ref()
+                    .map(|e| (
+                        e.effect.as_ref().map(|eff| eff.id.to_string()).unwrap_or_else(|| String::new()),
+                        e.source,
+                        match &e.relay_var { Some(EventResult::Number(n)) => *n, _ => 0 } // Extract damage from relay_var
+                    ))
+                    .unwrap_or_else(|| (String::new(), None, 0));
+                let _ = move_id_str; // Unused, we now use active_move_clone
+                ability_callbacks::dispatch_on_damaging_hit(self, ability_id.as_str(), damage, Some(pokemon_pos), source_pos, active_move_clone.as_ref())
+            }
+            "DamagingHitOrder" => {
+                // Get source from current event context
+                let source_pos = self.event.as_ref().and_then(|e| e.source);
+                ability_callbacks::dispatch_on_damaging_hit_order(
+                    self,
+                    ability_id.as_str(),
+                    0,
+                    Some(pokemon_pos),
+                    source_pos,
+                    active_move_clone.as_ref(),
+                )
+            }
+            "DeductPP" => {
+                ability_callbacks::dispatch_on_deduct_p_p(self, ability_id.as_str(), Some(pokemon_pos), event_source_pos)
+            }
+            "DisableMove" => {
+                ability_callbacks::dispatch_on_disable_move(self, ability_id.as_str(), pokemon_pos)
+            }
+            "DragOut" => {
+                ability_callbacks::dispatch_on_drag_out(self, ability_id.as_str(), pokemon_pos, event_source_pos, active_move_clone.as_ref())
+            }
+            "DragOutPriority" => ability_callbacks::dispatch_on_drag_out_priority(
+                self,
+                ability_id.as_str(),
+                pokemon_pos,
+                event_source_pos,
+                active_move_clone.as_ref(),
+            ),
+            "EatItem" => {
+                ability_callbacks::dispatch_on_eat_item(
+                    self,
+                    ability_id.as_str(),
+                    event_effect.as_ref().map(|e| e.id.as_str()),
+                    pokemon_pos,
+                    event_source_pos,
+                    event_effect.as_ref(),
+                )
+            }
+            "Effectiveness" => {
+                // Extract type_mod from relay_var and target_type from type_param
+                let (type_mod, target_type) = {
+                    let type_mod = self
+                        .event
+                        .as_ref()
+                        .and_then(|e| match &e.relay_var { Some(EventResult::Number(n)) => Some(*n), _ => None })
+                        .unwrap_or(0);
+
+                    let target_type = self
+                        .event
+                        .as_ref()
+                        .and_then(|e| e.type_param.clone())
+                        .unwrap_or_default();
+
+                    (type_mod, target_type)
+                };
+
+                ability_callbacks::dispatch_on_effectiveness(self, ability_id.as_str(), type_mod, pokemon_pos, &target_type, active_move_clone.as_ref())
+            }
+            "EmergencyExit" => ability_callbacks::dispatch_on_emergency_exit(
+                self,
+                ability_id.as_str(),
+                Some(pokemon_pos)
+            ),
+            "End" => ability_callbacks::dispatch_on_end(self, ability_id.as_str(), pokemon_pos),
+            "Faint" => ability_callbacks::dispatch_on_faint(self, ability_id.as_str(), pokemon_pos, event_source_pos, event_effect.as_ref()),
+            "Flinch" => {
+                ability_callbacks::dispatch_on_flinch(self, ability_id.as_str(), pokemon_pos)
+            }
+            "FoeAfterBoost" => ability_callbacks::dispatch_on_foe_after_boost(
+                self,
+                ability_id.as_str(),
+                Some(pokemon_pos), event_source_pos, event_effect.as_ref()
+            ),
+            "FoeMaybeTrapPokemon" => ability_callbacks::dispatch_on_foe_maybe_trap_pokemon(
+                self,
+                ability_id.as_str(),
+                pokemon_pos, event_source_pos
+            ),
+            "FoeTrapPokemon" => ability_callbacks::dispatch_on_foe_trap_pokemon(
+                self,
+                ability_id.as_str(),
+                pokemon_pos,
+            ),
+            "FoeTryEatItem" => ability_callbacks::dispatch_on_foe_try_eat_item(
+                self,
+                ability_id.as_str()
+            ),
+            "FoeTryMove" => {
+                // JavaScript: onFoeTryMove(target, source, move)
+                // target = the move's target (event_target_pos)
+                // source = the move's user (event_source_pos, the Pokemon using the move)
+                // The ability holder is accessed via this.effectState.target in JS / battle.effect_state.borrow().target in Rust
+                // NOT the source parameter!
+                ability_callbacks::dispatch_on_foe_try_move(self, ability_id.as_str(), event_target_pos, event_source_pos, active_move_clone.as_ref())
+            }
+            "FractionalPriority" => ability_callbacks::dispatch_on_fractional_priority(
+                self,
+                ability_id.as_str(),
+                relay_var_int,
+                pokemon_pos,
+                None,
+                active_move_clone.as_ref(),
+            ),
+            "FractionalPriorityPriority" => {
+                ability_callbacks::dispatch_on_fractional_priority_priority(
+                    self,
+                    ability_id.as_str(),
+                    relay_var_int,
+                    pokemon_pos,
+                    None,
+                    active_move_clone.as_ref(),
+                )
+            }
+            "Hit" => ability_callbacks::dispatch_on_hit(self, ability_id.as_str(), pokemon_pos, event_source_pos.unwrap_or((0, 0)), active_move_clone.as_ref()),
+            "Immunity" => {
+                // JS: runEvent('Immunity', this, null, null, type)
+                // The status/type being checked is passed as relay_var (String)
+                ability_callbacks::dispatch_on_immunity(self, ability_id.as_str(), relay_var_string.as_str(), pokemon_pos)
+            }
+            "ModifyAccuracy" => ability_callbacks::dispatch_on_modify_accuracy(
+                self,
+                ability_id.as_str(),
+                relay_var_int, pokemon_pos, event_target_pos.unwrap_or((0, 0)),
+            active_move_clone.as_ref(),
+            ),
+            "ModifyAccuracyPriority" => ability_callbacks::dispatch_on_modify_accuracy_priority(
+                self,
+                ability_id.as_str(),
+                0, pokemon_pos, pokemon_pos,
+            active_move_clone.as_ref(),
+            ),
+            "ModifyAtk" => {
+                // JavaScript: onModifyAtk(atk, attacker, defender)
+                // In runEvent call: runEvent('ModifyAtk', source, target, move, attack)
+                // So event.target = source (attacker) and event.source = target (defender)
+                let (atk, defender_pos, _move_id_str) = if let Some(ref event) = self.event {
+                    (
+                        match &event.relay_var { Some(EventResult::Number(n)) => *n, _ => 0 },
+                        event.source.unwrap_or((0, 0)),  // defender is event.source, not event.target
+                        event.effect.as_ref().map(|eff| eff.id.as_str().to_string()).unwrap_or_default()
+                    )
+                } else {
+                    (0, (0, 0), String::new())
+                };
+                ability_callbacks::dispatch_on_modify_atk(self, ability_id.as_str(), atk, pokemon_pos, defender_pos, active_move_clone.as_ref())
+            }
+            "ModifyAtkPriority" => ability_callbacks::dispatch_on_modify_atk_priority(
+                self,
+                ability_id.as_str(),
+                0, pokemon_pos, pokemon_pos,
+            active_move_clone.as_ref(),
+            ),
+            "ModifyCritRatio" => ability_callbacks::dispatch_on_modify_crit_ratio(self, ability_id.as_str(), relay_var_int, pokemon_pos, event_source_pos, active_move_clone.as_ref()),
+            "ModifyDamage" => {
+                ability_callbacks::dispatch_on_modify_damage(self, ability_id.as_str(), relay_var_int, pokemon_pos, event_source_pos.unwrap_or((0, 0)), active_move_clone.as_ref())
+            }
+            "ModifyDef" => {
+                let (def, attacker_pos, _move_id_str) = if let Some(ref event) = self.event {
+                    (
+                        match &event.relay_var { Some(EventResult::Number(n)) => *n, _ => 0 },
+                        event.source.unwrap_or((0, 0)),
+                        event.effect.as_ref().map(|eff| eff.id.as_str().to_string()).unwrap_or_default()
+                    )
+                } else {
+                    (0, (0, 0), String::new())
+                };
+                ability_callbacks::dispatch_on_modify_def(self, ability_id.as_str(), def, pokemon_pos, attacker_pos, active_move_clone.as_ref())
+            }
+            "ModifyDefPriority" => ability_callbacks::dispatch_on_modify_def_priority(self, ability_id.as_str(), 0, pokemon_pos, (0, 0), active_move_clone.as_ref()),
+            "ModifyMove" => {
+                let active_move_temp = self.active_move.take();
+                let result = if let Some(ref shared_move) = active_move_temp {
+                    let mut borrowed = shared_move.borrow_mut();
+                    ability_callbacks::dispatch_on_modify_move(self, ability_id.as_str(), Some(&mut *borrowed), pokemon_pos, event_target_pos)
+                } else {
+                    ability_callbacks::dispatch_on_modify_move(self, ability_id.as_str(), None, pokemon_pos, event_target_pos)
+                };
+                self.active_move = active_move_temp;
+                result
+            }
+            "ModifyMovePriority" => {
+                let active_move_temp = self.active_move.take();
+                let result = if let Some(ref shared_move) = active_move_temp {
+                    let mut borrowed = shared_move.borrow_mut();
+                    ability_callbacks::dispatch_on_modify_move_priority(
+                        self,
+                        ability_id.as_str(),
+                        Some(&mut *borrowed),
+                        pokemon_pos,
+                        event_target_pos,
+                    )
+                } else {
+                    ability_callbacks::dispatch_on_modify_move_priority(
+                        self,
+                        ability_id.as_str(),
+                        None,
+                        pokemon_pos,
+                        event_target_pos,
+                    )
+                };
+                self.active_move = active_move_temp;
+                result
+            }
+            "ModifyPriority" => ability_callbacks::dispatch_on_modify_priority(
+                self,
+                ability_id.as_str(),
+                relay_var_int, pokemon_pos, event_target_pos,
+            active_move_clone.as_ref(),
+            ),
+            "ModifySTAB" => {
+                // ModifySTAB event: pokemon (attacker) is event.target, target (defender) is event.source
+                // The ability callback signature is: onModifySTAB(stab, source, target, move)
+                // where source is the Pokemon using the move (attacker)
+                let (stab, source_pos, target_pos, _move_id_str) = if let Some(ref event) = self.event {
+                    let stab_value = match &event.relay_var {
+                        Some(EventResult::Float(f)) => *f,
+                        _ => 1.0,
+                    };
+                    (
+                        stab_value,
+                        event.target,   // source in callback = attacker = event.target
+                        event.source,   // target in callback = defender = event.source
+                        event.effect.as_ref().map(|eff| eff.id.as_str().to_string()).unwrap_or_default()
+                    )
+                } else {
+                    (1.0, None, Some(pokemon_pos), String::new())
+                };
+                ability_callbacks::dispatch_on_modify_s_t_a_b(self, ability_id.as_str(), stab, source_pos, target_pos, active_move_clone.as_ref())
+            }
+            "ModifySecondaries" => ability_callbacks::dispatch_on_modify_secondaries(self, ability_id.as_str()),
+            "ModifySpA" => {
+                // JavaScript: onModifySpA(atk, attacker, defender)
+                // In runEvent call: runEvent('ModifySpA', source, target, move, attack)
+                // So event.target = source (attacker) and event.source = target (defender)
+                let (spa, defender_pos, _move_id_str) = if let Some(ref event) = self.event {
+                    (
+                        match &event.relay_var { Some(EventResult::Number(n)) => *n, _ => 0 },
+                        event.source.unwrap_or((0, 0)),  // defender is event.source, not event.target
+                        event.effect.as_ref().map(|eff| eff.id.as_str().to_string()).unwrap_or_default()
+                    )
+                } else {
+                    (0, (0, 0), String::new())
+                };
+                ability_callbacks::dispatch_on_modify_sp_a(self, ability_id.as_str(), spa, pokemon_pos, defender_pos, active_move_clone.as_ref())
+            }
+            "ModifySpAPriority" => ability_callbacks::dispatch_on_modify_sp_a_priority(
+                self,
+                ability_id.as_str(),
+                0, pokemon_pos, pokemon_pos,
+            active_move_clone.as_ref(),
+            ),
+            "ModifySpe" => {
+                ability_callbacks::dispatch_on_modify_spe(self, ability_id.as_str(), relay_var_int, pokemon_pos)
+            }
+            "ModifyType" => {
+                let active_move_temp = self.active_move.take();
+                let result = if let Some(ref shared_move) = active_move_temp {
+                    let mut borrowed = shared_move.borrow_mut();
+                    ability_callbacks::dispatch_on_modify_type(self, ability_id.as_str(), Some(&mut *borrowed), pokemon_pos, event_target_pos)
+                } else {
+                    ability_callbacks::dispatch_on_modify_type(self, ability_id.as_str(), None, pokemon_pos, event_target_pos)
+                };
+                self.active_move = active_move_temp;
+                result
+            }
+            "ModifyTypePriority" => {
+                let active_move_temp = self.active_move.take();
+                let result = if let Some(ref shared_move) = active_move_temp {
+                    let mut borrowed = shared_move.borrow_mut();
+                    ability_callbacks::dispatch_on_modify_type_priority(
+                        self,
+                        ability_id.as_str(),
+                        Some(&mut *borrowed),
+                        pokemon_pos,
+                        event_target_pos,
+                    )
+                } else {
+                    ability_callbacks::dispatch_on_modify_type_priority(
+                        self,
+                        ability_id.as_str(),
+                        None,
+                        pokemon_pos,
+                        event_target_pos,
+                    )
+                };
+                self.active_move = active_move_temp;
+                result
+            }
+            "ModifyWeight" => {
+                ability_callbacks::dispatch_on_modify_weight(self, ability_id.as_str(), relay_var_int, pokemon_pos)
+            }
+            "ModifyWeightPriority" => ability_callbacks::dispatch_on_modify_weight_priority(self, ability_id.as_str(), relay_var_int, pokemon_pos),
+            "PrepareHit" => {
+                // For PrepareHit, pokemon_pos is the source (Pokemon using the move)
+                ability_callbacks::dispatch_on_prepare_hit(self, ability_id.as_str(), Some(pokemon_pos), event_target_pos, active_move_clone.as_ref())
+            }
+            "Residual" => {
+                ability_callbacks::dispatch_on_residual(self, ability_id.as_str(), pokemon_pos, event_source_pos, event_effect.as_ref())
+            }
+            "ResidualOrder" => ability_callbacks::dispatch_on_residual_order(
+                self,
+                ability_id.as_str(),
+                pokemon_pos,
+                event_source_pos,
+                event_effect.as_ref(),
+            ),
+            "ResidualSubOrder" => ability_callbacks::dispatch_on_residual_sub_order(
+                self,
+                ability_id.as_str(),
+                pokemon_pos,
+                event_source_pos,
+                event_effect.as_ref(),
+            ),
+            "SetStatus" => {
+                ability_callbacks::dispatch_on_set_status(self, ability_id.as_str(), event_status_id.as_str(), pokemon_pos, event_source_pos, event_effect.as_ref())
+            }
+            "SideConditionStart" => {
+                let side_condition_id_string = self.event.as_ref()
+                    .and_then(|e| e.effect.as_ref())
+                    .map(|eff| eff.id.as_str().to_string());
+                let side_condition_id = side_condition_id_string.as_ref().map(|s| s.as_str()).unwrap_or("");
+
+                // For side events, target in handle_ability_event is the Pokemon with the ability (effect_holder)
+                // but we also need the side_idx from the original event target stored in event
+                let side_index = side_idx.unwrap_or_else(|| {
+                    // If target wasn't a Side, pokemon is on side 0 by default
+                    pokemon_pos.0
+                });
+
+                ability_callbacks::dispatch_on_side_condition_start(
+                    self,
+                    ability_id.as_str(),
+                    pokemon_pos,
+                    side_index,
+                    side_condition_id,
+                    event_source_pos
+                )
+            }
+            "SourceAfterFaint" => ability_callbacks::dispatch_on_source_after_faint(self, ability_id.as_str(), relay_var_int, Some(pokemon_pos), event_source_pos, event_effect.as_ref()),
+            "SourceBasePower" => ability_callbacks::dispatch_on_source_base_power(
+                self,
+                ability_id.as_str(),
+                relay_var_int,
+                pokemon_pos,
+                event_target_pos.unwrap_or((0, 0)),
+            active_move_clone.as_ref(),
+            ),
+            "SourceBasePowerPriority" => ability_callbacks::dispatch_on_source_base_power_priority(
+                self,
+                ability_id.as_str(),
+                relay_var_int,
+                pokemon_pos,
+                event_target_pos.unwrap_or((0, 0)),
+            active_move_clone.as_ref(),
+            ),
+            "SourceDamagingHit" => ability_callbacks::dispatch_on_source_damaging_hit(
+                self,
+                ability_id.as_str(),
+                relay_var_int, event_target_pos, Some(pokemon_pos),
+            active_move_clone.as_ref(),
+            ),
+            "SourceModifyAccuracy" => ability_callbacks::dispatch_on_source_modify_accuracy(
+                self,
+                ability_id.as_str(),
+                relay_var_int, event_target_pos.unwrap_or((0, 0)), pokemon_pos,
+            active_move_clone.as_ref(),
+            ),
+            "SourceModifyAccuracyPriority" => {
+                ability_callbacks::dispatch_on_source_modify_accuracy_priority(
+                    self,
+                    ability_id.as_str(),
+                    relay_var_int, event_target_pos.unwrap_or((0, 0)), pokemon_pos,
+                active_move_clone.as_ref(),
+            )
+            }
+            "SourceModifyAtk" => ability_callbacks::dispatch_on_source_modify_atk(
+                self,
+                ability_id.as_str(),
+                relay_var_int, pokemon_pos, event_target_pos.unwrap_or((0, 0)),
+            active_move_clone.as_ref(),
+            ),
+            "SourceModifyAtkPriority" => ability_callbacks::dispatch_on_source_modify_atk_priority(
+                self,
+                ability_id.as_str(),
+                relay_var_int, pokemon_pos, event_target_pos.unwrap_or((0, 0)),
+            active_move_clone.as_ref(),
+            ),
+            "SourceModifyDamage" => {
+                // Extract parameters from event
+                let (damage, source_pos, _move_id_str) = if let Some(ref event) = self.event {
+                    (
+                        match &event.relay_var { Some(EventResult::Number(n)) => *n, _ => 0 }, // damage value
+                        event.target.unwrap_or((0, 0)), // attacker position
+                        event.effect.as_ref().map(|eff| eff.id.as_str().to_string()).unwrap_or_default() // move id
+                    )
+                } else {
+                    (0, (0, 0), String::new())
+                };
+                // pokemon_pos is the defender (pokemon with the ability, e.g., Houndstone with Fluffy)
+                // source_pos is the attacker (e.g., Koraidon using Outrage)
+                ability_callbacks::dispatch_on_source_modify_damage(
+                    self,
+                    ability_id.as_str(),
+                    damage, source_pos, pokemon_pos,
+                    active_move_clone.as_ref()
+                )
+            }
+            "SourceModifyDamagePriority" => {
+                // Extract parameters from event
+                let (damage, source_pos, _move_id_str) = if let Some(ref event) = self.event {
+                    (
+                        match &event.relay_var { Some(EventResult::Number(n)) => *n, _ => 0 },
+                        event.target.unwrap_or((0, 0)),
+                        event.effect.as_ref().map(|eff| eff.id.as_str().to_string()).unwrap_or_default()
+                    )
+                } else {
+                    (0, (0, 0), String::new())
+                };
+                ability_callbacks::dispatch_on_source_modify_damage_priority(
+                    self,
+                    ability_id.as_str(),
+                    damage, source_pos, pokemon_pos,
+                    active_move_clone.as_ref()
+                )
+            }
+            "SourceModifySecondaries" => {
+                // Extract secondaries from event relay_var
+                let secondaries = self.event.as_ref().and_then(|e| {
+                    match &e.relay_var {
+                        Some(EventResult::Secondaries(s)) => Some(s.clone()),
+                        _ => None,
+                    }
+                });
+                if let Some(sec) = secondaries {
+                    // Callback returns EventResult::Secondaries with filtered list
+                    ability_callbacks::dispatch_on_source_modify_secondaries(
+                        self,
+                        ability_id.as_str(),
+                        &sec,
+                        event_target_pos,
+                        Some(pokemon_pos),
+                        active_move_clone.as_ref(),
+                    )
+                } else {
+                    EventResult::Continue
+                }
+            }
+            "SourceModifySpA" => ability_callbacks::dispatch_on_source_modify_sp_a(
+                self,
+                ability_id.as_str(),
+                relay_var_int, pokemon_pos, event_target_pos.unwrap_or((0, 0)),
+            active_move_clone.as_ref(),
+            ),
+            "SourceModifySpAPriority" => {
+                ability_callbacks::dispatch_on_source_modify_sp_a_priority(
+                    self,
+                    ability_id.as_str(),
+                    relay_var_int, pokemon_pos, event_target_pos.unwrap_or((0, 0)),
+                active_move_clone.as_ref(),
+            )
+            }
+            "SourceTryHeal" => ability_callbacks::dispatch_on_source_try_heal(
+                self,
+                ability_id.as_str(),
+                relay_var_int, event_target_pos, Some(pokemon_pos), event_effect.as_ref()
+            ),
+            "SourceTryPrimaryHit" => ability_callbacks::dispatch_on_source_try_primary_hit(
+                self,
+                ability_id.as_str(),
+                event_target_pos, Some(pokemon_pos), event_effect.as_ref()
+            ),
+            "Start" => ability_callbacks::dispatch_on_start(self, ability_id.as_str(), pokemon_pos, event_source_pos, event_effect.as_ref()),
+            "SwitchIn" => {
+                // JavaScript getCallback() special logic (battle.ts:996-1001):
+                // if (callback === undefined && target instanceof Pokemon && this.gen >= 5 && callbackName === 'onSwitchIn' &&
+                //     !(effect as any).onAnySwitchIn && (['Ability', 'Item'].includes(effect.effectType) ...)) {
+                //     callback = (effect as any).onStart;
+                // }
+                //
+                // Key: callback === undefined means the ability does NOT have a custom onSwitchIn
+                // If the ability HAS a custom onSwitchIn, use only that (it will call onStart itself if needed)
+                // If the ability does NOT have a custom onSwitchIn and gen >= 5, use onStart instead
+                //
+                // Check if this ability has a real onSwitchIn callback in the dispatcher
+                let has_custom_switch_in = matches!(
+                    ability_id.as_str(),
+                    "airlock" | "cloudnine" | "imposter" | "neutralizinggas" | "terashift" | "zerotohero"
+                );
+
+                if has_custom_switch_in {
+                    // Ability has custom onSwitchIn that handles its own onStart call
+                    ability_callbacks::dispatch_on_switch_in(self, ability_id.as_str(), pokemon_pos)
+                } else if self.gen >= 5 {
+                    // No custom onSwitchIn, gen >= 5: use onStart
+                    ability_callbacks::dispatch_on_start(self, ability_id.as_str(), pokemon_pos, event_source_pos, event_effect.as_ref())
+                } else {
+                    // gen < 5: try to call onSwitchIn (which likely doesn't exist)
+                    ability_callbacks::dispatch_on_switch_in(self, ability_id.as_str(), pokemon_pos)
+                }
+            },
+            "SwitchInPriority" => ability_callbacks::dispatch_on_switch_in_priority(
+                self,
+                ability_id.as_str(),
+                pokemon_pos,
+            ),
+            "SwitchOut" => {
+                ability_callbacks::dispatch_on_switch_out(self, ability_id.as_str(), pokemon_pos)
+            },
+            "TakeItem" => {
+                ability_callbacks::dispatch_on_take_item(self, ability_id.as_str(), event_effect.as_ref().map(|e| e.id.as_str()), pokemon_pos, event_source_pos)
+            },
+            "TerrainChange" => ability_callbacks::dispatch_on_terrain_change(
+                self,
+                ability_id.as_str(),
+                pokemon_pos, event_source_pos, event_effect.as_ref()
+            ),
+            "TryAddVolatile" => {
+                // Extract status_id from relay_var (e.g., "confusion")
+                let status_id = if let Some(ref event) = self.event {
+                    match &event.relay_var {
+                        Some(EventResult::String(s)) => s.clone(),
+                        _ => String::new(),
+                    }
+                } else {
+                    String::new()
+                };
+                ability_callbacks::dispatch_on_try_add_volatile(
+                    self,
+                    ability_id.as_str(),
+                    &status_id, pokemon_pos, None, None
+                )
+            }
+            "TryBoost" => {
+                // Temporarily take boost out of event to get mutable access
+                let mut boost = self.event.as_mut().and_then(|e| {
+                    let relay_var = e.relay_var.take();
+                    match relay_var {
+                        Some(EventResult::Boost(b)) => Some(b),
+                        _ => {
+                            // Put it back if it wasn't a Boost
+                            e.relay_var = relay_var;
+                            None
+                        }
+                    }
+                });
+                let result = ability_callbacks::dispatch_on_try_boost(
+                    self,
+                    ability_id.as_str(),
+                    boost.as_mut(), pokemon_pos, event_source_pos, event_effect.as_ref(),
+                );
+                // Return the modified boost so run_event can use it
+                // In JavaScript, the boost object is modified in-place and returned by runEvent
+                // In Rust, we need to return the modified boost so it propagates back
+                if let Some(b) = boost {
+                    // Always return the boost (possibly modified by the handler)
+                    EventResult::Boost(b)
+                } else {
+                    result
+                }
+            }
+            "TryBoostPriority" => {
+                // Temporarily take boost out of event to get mutable access
+                let mut boost = self.event.as_mut().and_then(|e| {
+                    let relay_var = e.relay_var.take();
+                    match relay_var {
+                        Some(EventResult::Boost(b)) => Some(b),
+                        _ => {
+                            // Put it back if it wasn't a Boost
+                            e.relay_var = relay_var;
+                            None
+                        }
+                    }
+                });
+                let result = ability_callbacks::dispatch_on_try_boost_priority(
+                    self,
+                    ability_id.as_str(),
+                    boost.as_mut(), pokemon_pos, event_source_pos, event_effect.as_ref(),
+                );
+                // Return the modified boost so run_event can use it
+                if let Some(b) = boost {
+                    EventResult::Boost(b)
+                } else {
+                    result
+                }
+            }
+            "TryEatItem" => {
+                // JavaScript: runEvent('TryEatItem', this, null, null, item)
+                // The item is passed as relayVar (5th param), not as sourceEffect
+                // So we get item_id from relay_var_string, not event_effect_id
+                ability_callbacks::dispatch_on_try_eat_item(self, ability_id.as_str(), if relay_var_string.is_empty() { None } else { Some(relay_var_string.as_str()) }, pokemon_pos)
+            }
+            "TryEatItemPriority" => {
+                // Same as TryEatItem - item is passed as relayVar
+                ability_callbacks::dispatch_on_try_eat_item_priority(
+                    self,
+                    ability_id.as_str(), if relay_var_string.is_empty() { None } else { Some(relay_var_string.as_str()) }, pokemon_pos
+                )
+            }
+            "TryHeal" => {
+                // Pass the effect_id so abilities like Ripen can check if it's a berry
+                ability_callbacks::dispatch_on_try_heal(self, ability_id.as_str(), relay_var_int, Some(pokemon_pos), None, event_effect.as_ref())
+            }
+            "TryHit" => {
+                ability_callbacks::dispatch_on_try_hit(self, ability_id.as_str(), pokemon_pos, event_source_pos.unwrap_or((0, 0)), active_move_clone.as_ref())
+            }
+            "TryHitPriority" => ability_callbacks::dispatch_on_try_hit_priority(
+                self,
+                ability_id.as_str(),
+                pokemon_pos, pokemon_pos,
+            active_move_clone.as_ref(),
+            ),
+            "Update" => {
+                ability_callbacks::dispatch_on_update(self, ability_id.as_str(), pokemon_pos)
+            },
+            "Weather" => {
+                // JavaScript: onWeather(target, source, effect)
+                // effect is the weather effect (e.g., sunnyday, desolateland)
+                // This is passed via each_event("Weather") from sunnyday.on_field_residual
+                ability_callbacks::dispatch_on_weather(self, ability_id.as_str(), event_effect_id.as_str(), pokemon_pos, None, None)
+            },
+            "WeatherChange" => ability_callbacks::dispatch_on_weather_change(
+                self,
+                ability_id.as_str(),
+                pokemon_pos,
+                event_source_pos,
+                event_effect.as_ref(),
+            ),
+            _ => EventResult::Continue,
+        };
+
+        crate::trace_ability!("  ← Ability '{}' on {} returned: {:?}", ability_id.as_str(), _pokemon_name, result);
+
+        result
+    }
+}

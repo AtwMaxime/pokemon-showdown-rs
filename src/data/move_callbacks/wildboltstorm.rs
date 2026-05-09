@@ -1,0 +1,41 @@
+//! Wildbolt Storm Move
+//!
+//! Pokemon Showdown - http://pokemonshowdown.com/
+//!
+//! Generated from data/moves.ts
+
+use crate::battle::Battle;
+use crate::event::EventResult;
+
+/// onModifyMove(move, pokemon, target) {
+///     if (target && ['raindance', 'primordialsea'].includes(target.effectiveWeather())) {
+///         move.accuracy = true;
+///     }
+/// }
+pub fn on_modify_move(
+    battle: &mut Battle,
+    _pokemon_pos: (usize, usize),
+    target_pos: Option<(usize, usize)>,
+) -> EventResult {
+    // if (target && ['raindance', 'primordialsea'].includes(target.effectiveWeather()))
+    if let Some(target) = target_pos {
+        // NOTE: Must use battle.effective_weather() to account for Air Lock/Cloud Nine
+        let field_weather = battle.effective_weather();
+        let weather = {
+            let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+                Some(p) => p,
+                None => return EventResult::Continue,
+            };
+            target_pokemon.effective_weather(battle, field_weather.as_str())
+        };
+
+        if weather == "raindance" || weather == "primordialsea" {
+            // move.accuracy = true;
+            if let Some(ref active_move) = battle.active_move {
+                active_move.borrow_mut().accuracy = crate::dex::Accuracy::AlwaysHits;
+            }
+        }
+    }
+
+    EventResult::Continue
+}

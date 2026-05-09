@@ -1,0 +1,60 @@
+//! After You Move
+//!
+//! Pokemon Showdown - http://pokemonshowdown.com/
+//!
+//! Generated from data/moves.ts
+
+use crate::battle::Battle;
+use crate::event::EventResult;
+
+/// onHit(target) {
+///     if (this.activePerHalf === 1) return false; // fails in singles
+///     const action = this.queue.willMove(target);
+///     if (action) {
+///         this.queue.prioritizeAction(action);
+///         this.add('-activate', target, 'move: After You');
+///     } else {
+///         return false;
+///     }
+/// }
+pub fn on_hit(
+    battle: &mut Battle,
+    target_pos: (usize, usize),
+    _source_pos: Option<(usize, usize)>,
+) -> EventResult {
+    // if (this.activePerHalf === 1) return false; // fails in singles
+    if battle.active_per_half == 1 {
+        return EventResult::Boolean(false);
+    }
+
+    // onHit(target) - target is the first param (the ally being given priority)
+    let target = target_pos;
+
+    // const action = this.queue.willMove(target);
+    let has_action = battle.queue.will_move(target.0, target.1).is_some();
+
+    // if (action) {
+    if has_action {
+        // this.queue.prioritizeAction(action);
+        battle.queue.prioritize_action(target.0, target.1);
+
+        // this.add('-activate', target, 'move: After You');
+        // Extract pokemon identifier before the mutable borrow
+        let target_ident = {
+            let target_pokemon = match battle.pokemon_at(target.0, target.1) {
+                Some(p) => p,
+                None => return EventResult::Continue,
+            };
+            target_pokemon.get_slot()
+        };
+        battle.add(
+            "-activate",
+            &[target_ident.as_str().into(), "move: After You".into()],
+        );
+
+        EventResult::Continue
+    } else {
+        // return false;
+        EventResult::Boolean(false)
+    }
+}
