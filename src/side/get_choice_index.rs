@@ -56,18 +56,33 @@ impl Side {
                     }
                 }
                 RequestState::Switch => {
-                    // auto-pass for Pokemon without switchFlag
-                    while index < self.active.len() {
-                        if let Some(Some(pokemon_idx)) = self.active.get(index) {
-                            if let Some(pokemon) = self.pokemon.get(*pokemon_idx) {
-                                if pokemon.switch_flag.is_none() {
-                                    self.choose_pass();
-                                    index += 1;
-                                    continue;
+                    // JS: while (index < this.active.length && !this.active[index].switchFlag) {
+                    //     this.choosePass(); index++;
+                    // }
+                    // In JS, switchFlag is always set when requestState == 'switch' (forced
+                    // switches set it). The Rust port doesn't set switchFlag consistently for
+                    // all forced switch scenarios (U-turn, Roar, Dragon Tail, etc.).
+                    // If NO active slot has switch_flag but request_state is Switch, the
+                    // battle engine still expects a switch — skip auto-pass to accept it.
+                    let any_switch_flag = (0..self.active.len()).any(|i| {
+                        self.active.get(i)
+                            .and_then(|&a| a)
+                            .and_then(|idx| self.pokemon.get(idx))
+                            .map_or(false, |p| p.switch_flag.is_some())
+                    });
+                    if any_switch_flag {
+                        while index < self.active.len() {
+                            if let Some(Some(pokemon_idx)) = self.active.get(index) {
+                                if let Some(pokemon) = self.pokemon.get(*pokemon_idx) {
+                                    if pokemon.switch_flag.is_none() {
+                                        self.choose_pass();
+                                        index += 1;
+                                        continue;
+                                    }
                                 }
                             }
+                            break;
                         }
-                        break;
                     }
                 }
                 _ => {}

@@ -125,6 +125,20 @@ impl Side {
     // 	}
     //
     pub fn choose(&mut self, battle: &mut Battle, input: &str) -> Result<bool, String> {
+        // JS: if (!this.requestState) {
+        //     return this.emitChoiceError(
+        //         this.battle.ended ? `Can't do anything: The game is over` : `Can't do anything: It's not your turn`
+        //     );
+        // }
+        if self.request_state == RequestState::None {
+            let msg = if battle.ended {
+                "Can't do anything: The game is over".to_string()
+            } else {
+                "Can't do anything: It's not your turn".to_string()
+            };
+            return Err(msg);
+        }
+
         // Parse and execute choice commands
         let parts: Vec<&str> = input.split_whitespace().collect();
         if parts.is_empty() {
@@ -172,11 +186,46 @@ impl Side {
                     return Err("Move requires target".to_string());
                 }
                 let move_idx: usize = parts[1].parse().map_err(|_| "Invalid move")?;
+
+                // Parse event suffixes: terastallize, mega, dynamax, zmove, etc.
+                // JS equivalent: while(true) loop stripping suffixes from data
+                let mut has_tera = false;
+                let mut has_mega = false;
+                let mut has_dynamax = false;
+                let mut has_zmove = false;
+                let mut has_ultra = false;
+                for &suffix in &parts[2..] {
+                    match suffix {
+                        "terastallize" | "terastal" => has_tera = true,
+                        "mega" => has_mega = true,
+                        "megax" | "megay" => {
+                            return Err(format!("{} not supported in this parser", suffix));
+                        }
+                        "zmove" => has_zmove = true,
+                        "dynamax" | "gigantamax" | "max" => has_dynamax = true,
+                        "ultra" => has_ultra = true,
+                        _ => {
+                            return Err(format!("Unknown move suffix: {}", suffix));
+                        }
+                    }
+                }
+
                 let index = self.get_choice_index(false);
                 if let Some(Some(poke_idx)) = self.active.get(index) {
                     if let Some(slot) = self.pokemon[*poke_idx].move_slots.get(move_idx - 1) {
                         let move_id = slot.id.clone();
-                        self.choose_move(battle, move_id, None, false, None, None, None)?;
+                        let tera_param = if has_tera {
+                            self.pokemon[*poke_idx].tera_type.clone()
+                        } else {
+                            None
+                        };
+                        // Phase 2: mutable call — immutable borrows dropped
+                        self.choose_move(
+                            battle, move_id, None, has_mega || has_ultra,
+                            if has_zmove { Some(String::new()) } else { None },
+                            if has_dynamax { Some(String::new()) } else { None },
+                            tera_param,
+                        )?;
                         Ok(true)
                     } else {
                         Err("Invalid move index".to_string())

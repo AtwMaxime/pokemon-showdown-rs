@@ -30,12 +30,12 @@ impl Battle {
         let side_idx = side_id.index();
 
         // JS: if (!side.choose(input))
-        let choose_result = unsafe {
+        let (choose_result, err_msg) = unsafe {
             let side_ptr = &mut self.sides[side_idx] as *mut Side;
             let battle_ptr = self as *mut Battle;
             match (*side_ptr).choose(&mut *battle_ptr, input) {
-                Ok(success) => success,
-                Err(_) => false,
+                Ok(success) => (success, None),
+                Err(msg) => (false, Some(msg)),
             }
         };
 
@@ -43,10 +43,13 @@ impl Battle {
             // JS: if (!side.choice.error)
             if self.sides[side_idx].choice.error.is_empty() {
                 // JS: side.emitChoiceError(...)
-                self.sides[side_idx].emit_choice_error(&format!(
-                    "Unknown error for choice: {}. If you're not using a custom client, please report this as a bug.",
-                    input
-                ));
+                let msg = err_msg.unwrap_or_else(|| {
+                    format!(
+                        "Unknown error for choice: {}. If you're not using a custom client, please report this as a bug.",
+                        input
+                    )
+                });
+                self.sides[side_idx].emit_choice_error(&msg);
             }
             return false;
         }

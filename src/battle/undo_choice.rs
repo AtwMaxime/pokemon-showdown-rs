@@ -72,7 +72,7 @@ impl Battle {
 
         // JS: if (side.choice.cantUndo) { side.emitChoiceError(...); return; }
         if cant_undo {
-            if let Some(side) = self.sides.get(side_idx) {
+            if let Some(side) = self.sides.get_mut(side_idx) {
                 side.emit_choice_error("Can't undo: A trapping/disabling effect would cause undo to leak information");
             }
             return;

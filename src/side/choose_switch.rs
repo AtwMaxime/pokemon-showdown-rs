@@ -110,6 +110,16 @@ impl Side {
     // 	}
     //
     pub fn choose_switch(&mut self, slot: usize) -> Result<(), String> {
+        // JS: if (this.requestState !== 'move' && this.requestState !== 'switch') {
+        //     return this.emitChoiceError(`Can't switch: You need a ${this.requestState} response`);
+        // }
+        if self.request_state != RequestState::Move && self.request_state != RequestState::Switch {
+            return Err(format!(
+                "Can't switch: You need a {:?} response",
+                self.request_state
+            ));
+        }
+
         let index = self.get_choice_index(false);
         if index >= self.active.len() {
             return Err("You sent more switches than needed".to_string());
@@ -138,12 +148,15 @@ impl Side {
             .unwrap_or(false);
 
         // In JavaScript, pokemon array is physically reordered so active Pokemon are at
-        // indices 0..(active.length-1). In Rust, we use position field instead.
-        // Check if the target Pokemon is in an active position.
+        // indices 0..(active.length-1). In Rust, we use a Vec<Option<usize>> active array
+        // instead. Check if the target slot index appears in self.active.
         let target = self.pokemon.get(slot).ok_or("Invalid slot")?;
 
         // JS: else if (slot < this.active.length && !this.slotConditions[pokemon.position]['revivalblessing']) {
-        if target.position < self.active.len() && !has_revivalblessing {
+        // In JS: active Pokemon are at indices 0..active.length due to physical reordering.
+        // In Rust: check membership in the active Vec instead.
+        let target_is_active = self.active.iter().any(|&a| a == Some(slot));
+        if target_is_active && !has_revivalblessing {
             return Err("Can't switch to an active Pokemon".to_string());
         }
 
@@ -153,28 +166,20 @@ impl Side {
 
         // Handle RevivalBlessing case - targeting fainted Pokemon
         if has_revivalblessing {
-            // JS: if (this.slotConditions[pokemon.position]['revivalblessing']) {
-            // JS:     if (!targetPokemon.fainted) {
-            // JS:         return this.emitChoiceError(`Can't switch: You have to pass to a fainted Pokémon`);
-            // JS:     }
             if !target.is_fainted() {
                 return Err("Can't switch: You have to pass to a fainted Pokemon".to_string());
             }
 
-            // JS: this.choice.forcedSwitchesLeft = this.battle.clampIntRange(this.choice.forcedSwitchesLeft - 1, 0);
             if self.choice.forced_switches_left > 0 {
                 self.choice.forced_switches_left -= 1;
             }
 
-            // JS: pokemon.switchFlag = false;
-            // Clear the switch flag on the Pokemon that used Revival Blessing
             if let Some(&Some(poke_idx)) = self.active.get(index) {
                 if let Some(pokemon) = self.pokemon.get_mut(poke_idx) {
                     pokemon.switch_flag = None;
                 }
             }
 
-            // JS: this.choice.actions.push({ choice: 'revivalblessing', pokemon, target: targetPokemon });
             self.choice.actions.push(ChosenAction {
                 choice: ChoiceType::RevivalBlessing,
                 pokemon_index: index,
@@ -203,10 +208,16 @@ impl Side {
 
         let choice_type = if self.request_state == RequestState::Switch {
             if self.choice.forced_switches_left == 0 {
-                return Err("No more forced switches".to_string());
+                // JS: if (!this.choice.forcedSwitchesLeft) { throw new Error(...) }
+                // In practice, request_state can be Switch even when forced_switches_left
+                // is 0 (e.g. after clear_choice was called with Move then per-side
+                // request_state was overridden to Switch by request data). Allow the
+                // switch as voluntary rather than panicking.
+                ChoiceType::Switch
+            } else {
+                self.choice.forced_switches_left -= 1;
+                ChoiceType::InstaSwitch
             }
-            self.choice.forced_switches_left -= 1;
-            ChoiceType::InstaSwitch
         } else {
             ChoiceType::Switch
         };

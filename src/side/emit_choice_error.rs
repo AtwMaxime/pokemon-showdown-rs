@@ -19,10 +19,8 @@ impl Side {
     // 		return false;
     // 	}
     //
-    pub fn emit_choice_error(&self, message: &str) -> bool {
-        // In the full implementation, this would send to client
-        // For now, just return false to indicate error was emitted
-        let _ = message;
+    pub fn emit_choice_error(&mut self, message: &str) -> bool {
+        self.choice.error = message.to_string();
         false
     }
 }

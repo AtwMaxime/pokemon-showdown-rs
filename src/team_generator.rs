@@ -24,7 +24,8 @@ pub fn generate_random_team(prng: &mut PRNG, dex: &Dex) -> Vec<PokemonSet> {
     let mut all_moves: Vec<_> = dex.moves.keys().map(|id| id.as_str()).collect();
     all_moves.sort();
 
-    // Get all available items as a Vec for sampling (sorted for determinism across languages)
+    // Get all available types as a Vec for sampling (sorted for determinism across languages)
+    let all_types: Vec<&String> = dex.types().names();
     let mut all_items: Vec<_> = dex.items.keys().map(|id| id.as_str()).collect();
     all_items.sort();
 
@@ -89,6 +90,9 @@ pub fn generate_random_team(prng: &mut PRNG, dex: &Dex) -> Vec<PokemonSet> {
         } else {
             "".to_string()
         };
+
+        // Select random tera type from available types
+        let tera_type = prng.sample(&all_types).unwrap().to_string();
 
         // Select random nature
         let nature = if !all_natures.is_empty() {
@@ -177,6 +181,7 @@ pub fn generate_random_team(prng: &mut PRNG, dex: &Dex) -> Vec<PokemonSet> {
             moves,
             evs,
             ivs,
+            tera_type: Some(tera_type),
             ..Default::default()
         });
     }
