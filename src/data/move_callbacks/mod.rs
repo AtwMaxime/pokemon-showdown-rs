@@ -495,6 +495,21 @@ pub fn dispatch_base_power_callback(
         _ => EventResult::Continue,
     }
 }
+/// Check if a move has a basePowerCallback (for Tera BP floor exclusion)
+pub fn has_base_power_callback(move_id: &str) -> bool {
+    matches!(move_id,
+        "acrobatics" | "assurance" | "avalanche" | "beatup" | "boltbeak" | "crushgrip" |
+        "dragonenergy" | "echoedvoice" | "electroball" | "eruption" | "firepledge" |
+        "fishiousrend" | "flail" | "frustration" | "furycutter" | "grassknot" | "grasspledge" |
+        "gyroball" | "hardpress" | "heatcrash" | "heavyslam" | "hex" | "iceball" |
+        "infernalparade" | "lastrespects" | "lowkick" | "payback" | "pikapapow" | "powertrip" |
+        "punishment" | "pursuit" | "ragefist" | "return" | "revenge" | "reversal" |
+        "risingvoltage" | "rollout" | "round" | "smellingsalts" | "spitup" | "stompingtantrum" |
+        "storedpower" | "temperflare" | "terablast" | "tripleaxel" | "triplekick" | "trumpcard" |
+        "veeveevolley" | "wakeupslap" | "waterpledge" | "watershuriken" | "waterspout" | "wringout"
+    )
+}
+
 /// Dispatch beforeMoveCallback callbacks
 pub fn dispatch_before_move_callback(
     battle: &mut Battle,

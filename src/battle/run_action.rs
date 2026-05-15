@@ -1071,8 +1071,11 @@ impl Battle {
                             );
                         }
                     }
+                    PokemonActionType::Terastallize => {
+                        crate::battle_actions::terastallize(self, (poke_action.side_index, poke_action.pokemon_index));
+                    }
                     _ => {
-                        // Other Pokemon actions (mega evo, terastallize, etc.)
+                        // Other Pokemon actions (mega evo, etc.)
                     }
                 }
             }

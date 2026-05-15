@@ -196,7 +196,7 @@ pub fn modify_damage(
     // Get source and target data for STAB and type effectiveness
     // Use get_types() instead of pokemon.types to handle ability-based type changes
     // (e.g., Multitype for Arceus, RKS System for Silvally)
-    let (source_types, _target_types, target_slot) = {
+    let (source_types, _target_types, target_slot, source_terastallized, source_pre_tera_types) = {
         let source_types = if let Some(pokemon) = battle.pokemon_at(pokemon_pos.0, pokemon_pos.1) {
             if battle.turn >= 64 && battle.turn <= 66 {
                 debug_elog!("[MODIFY_DAMAGE] Reading source types for {} (species: {}): raw={:?}",
@@ -225,7 +225,16 @@ pub fn modify_damage(
             String::new()
         };
 
-        (source_types, target_types, target_slot)
+        let (source_terastallized, source_pre_tera_types) =
+            if let Some(pokemon) = battle.pokemon_at(pokemon_pos.0, pokemon_pos.1) {
+                let tera = pokemon.terastallized.clone();
+                let pre_tera = pokemon.get_types_full(battle, false, true);
+                (tera, pre_tera)
+            } else {
+                (None, vec![])
+            };
+
+        (source_types, target_types, target_slot, source_terastallized, source_pre_tera_types)
     };
 
     // if (type !== "???") {
@@ -265,8 +274,17 @@ pub fn modify_damage(
             stab = 1.5;
         }
 
-        // TODO: Handle Terastallized/Stellar cases (pokemon.terastallized)
-        // For now, skip Stellar tera handling
+        // JavaScript: else { if (pokemon.terastallized === type && pokemon.getTypes(false, true).includes(type)) { stab = 2; } }
+        // Tera STAB x2: tera type matches move type AND was a pre-tera type → 2x instead of 1.5x
+        // Stellar case handled in Étape D (rare in Random Battle)
+        if let Some(ref tera_type) = source_terastallized {
+            if tera_type != "Stellar"
+                && tera_type == &move_type
+                && source_pre_tera_types.contains(&move_type)
+            {
+                stab = 2.0;
+            }
+        }
 
         // JavaScript: stab = this.battle.runEvent("ModifySTAB", pokemon, target, move, stab);
         let stab_result = battle.run_event(

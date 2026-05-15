@@ -375,7 +375,8 @@ impl Side {
         if max_move.is_some() && self.choice.dynamax {
             return Err("You can only Dynamax once per battle".to_string());
         }
-        if terastallize.is_some() && self.choice.terastallize {
+        let side_already_terastallized = self.pokemon.iter().any(|p| p.terastallized.is_some());
+        if terastallize.is_some() && (self.choice.terastallize || side_already_terastallized) {
             return Err("You can only Terastallize once per battle".to_string());
         }
 

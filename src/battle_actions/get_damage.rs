@@ -394,6 +394,43 @@ pub fn get_damage(
     base_power = base_power.max(1);
     debug_elog!("[GET_DAMAGE] basePower after clamp to min 1: {}", base_power);
 
+    // JavaScript: Tera BP floor — STAB moves < 60 BP boosted to 60
+    // if (source.terastallized && (source.terastallized === 'Stellar' ?
+    //     !source.stellarBoostedTypes.includes(move.type) : source.hasType(move.type)) &&
+    //     basePower < 60 && dexMove.priority <= 0 && !dexMove.multihit &&
+    //     !((move.basePower === 0 || move.basePower === 150) && move.basePowerCallback)) { basePower = 60; }
+    {
+        let (source_terastallized, source_has_move_type) = {
+            if let Some(pokemon) = battle.pokemon_at(source_pos.0, source_pos.1) {
+                let tera = pokemon.terastallized.clone();
+                let has_type = tera.as_deref().map_or(false, |t| {
+                    if t == "Stellar" {
+                        false // Stellar handled in Étape D
+                    } else {
+                        pokemon.get_types(battle, false).contains(&move_type)
+                    }
+                });
+                (tera, has_type)
+            } else {
+                (None, false)
+            }
+        };
+        if source_terastallized.is_some() && source_has_move_type && base_power < 60 {
+            let dex_move = battle.dex.moves().get(active_move.id.as_str());
+            let priority = dex_move.map(|m| m.priority).unwrap_or(0);
+            let has_multihit = dex_move.map(|m| m.multi_hit.is_some()).unwrap_or(false);
+            let has_variable_bp = (active_move.base_power == 0 || active_move.base_power == 150)
+                && dex_move.map(|m| {
+                    use crate::data::move_callbacks;
+                    move_callbacks::has_base_power_callback(m.id.as_str())
+                }).unwrap_or(false);
+            if priority <= 0 && !has_multihit && !has_variable_bp {
+                base_power = 60;
+                debug_elog!("[GET_DAMAGE] Tera BP floor applied: move={}, new basePower=60", active_move.id);
+            }
+        }
+    }
+
     // JavaScript (lines 1653-1654): Hacked Max Moves have 0 base power, even if you Dynamax
     // if ((!source.volatiles['dynamax'] && move.isMax) || (move.isMax && this.dex.moves.get(move.baseMove).isMax)) {
     //     basePower = 0;
