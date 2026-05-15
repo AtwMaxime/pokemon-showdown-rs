@@ -212,6 +212,14 @@ fn get_type_data(id: &str, name: &str, gen: u8) -> Option<TypeInfo> {
                 None
             },
         ),
+        "stellar" => (
+            9,
+            if gen < 9 {
+                Some(Nonstandard::Future)
+            } else {
+                None
+            },
+        ),
         _ => (1, None),
     };
 
@@ -387,6 +395,9 @@ fn get_type_chart(id: &str) -> Option<HashMap<String, u8>> {
             chart.insert("dark".to_string(), 2);
             chart.insert("steel".to_string(), 1);
         }
+        "stellar" => {
+            // Stellar type: neutral against everything (no chart entries needed)
+        }
         _ => return None,
     }
 
@@ -399,7 +410,7 @@ fn get_all_types(gen: u8) -> Vec<TypeInfo> {
     let type_ids = [
         "bug", "dark", "dragon", "electric", "fairy", "fighting", "fire", "flying",
         "ghost", "grass", "ground", "ice", "normal", "poison", "psychic", "rock",
-        "steel", "water",
+        "steel", "stellar", "water",
     ];
 
     type_ids

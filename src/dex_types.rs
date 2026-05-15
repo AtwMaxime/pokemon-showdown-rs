@@ -24,15 +24,13 @@ impl<'a> DexTypes<'a> {
     /// Get all type names
     /// Equivalent to DexTypes.names() in dex-data.ts
     /// IMPORTANT: Returns types in alphabetical order to match JavaScript's TypeChart
-    /// iteration order. Also filters out nonstandard types like Stellar.
+    /// iteration order.
     pub fn names(&self) -> Vec<&'a String> {
         // JavaScript's names() method does:
         // this.all().filter(type => !type.isNonstandard).map(type => type.name)
         // where all() iterates over TypeChart in property insertion order (alphabetical)
-        let mut names: Vec<&'a String> = self.dex.types.keys()
-            // Filter out nonstandard types (Stellar is nonstandard)
-            .filter(|name| name.as_str() != "Stellar")
-            .collect();
+        // In Gen 9, Stellar is a standard type and should be included.
+        let mut names: Vec<&'a String> = self.dex.types.keys().collect();
         // Sort alphabetically to match JavaScript's TypeChart property order
         names.sort();
         names

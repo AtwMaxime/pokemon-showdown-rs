@@ -405,7 +405,8 @@ pub fn get_damage(
                 let tera = pokemon.terastallized.clone();
                 let has_type = tera.as_deref().map_or(false, |t| {
                     if t == "Stellar" {
-                        false // Stellar handled in Étape D
+                        // Stellar: floor applies if this move type hasn't been boosted yet
+                        !pokemon.stellar_boosted_types.contains(&move_type)
                     } else {
                         pokemon.get_types(battle, false).contains(&move_type)
                     }

@@ -196,7 +196,7 @@ pub fn modify_damage(
     // Get source and target data for STAB and type effectiveness
     // Use get_types() instead of pokemon.types to handle ability-based type changes
     // (e.g., Multitype for Arceus, RKS System for Silvally)
-    let (source_types, _target_types, target_slot, source_terastallized, source_pre_tera_types) = {
+    let (source_types, _target_types, target_slot, source_terastallized, source_pre_tera_types, source_stellar_boosted_types, source_species_name) = {
         let source_types = if let Some(pokemon) = battle.pokemon_at(pokemon_pos.0, pokemon_pos.1) {
             if battle.turn >= 64 && battle.turn <= 66 {
                 debug_elog!("[MODIFY_DAMAGE] Reading source types for {} (species: {}): raw={:?}",
@@ -225,16 +225,18 @@ pub fn modify_damage(
             String::new()
         };
 
-        let (source_terastallized, source_pre_tera_types) =
+        let (source_terastallized, source_pre_tera_types, source_stellar_boosted_types, source_species_name) =
             if let Some(pokemon) = battle.pokemon_at(pokemon_pos.0, pokemon_pos.1) {
                 let tera = pokemon.terastallized.clone();
                 let pre_tera = pokemon.get_types_full(battle, false, true);
-                (tera, pre_tera)
+                let stellar = pokemon.stellar_boosted_types.clone();
+                let species = pokemon.species_id.clone();
+                (tera, pre_tera, stellar, species)
             } else {
-                (None, vec![])
+                (None, vec![], vec![], ID::new(""))
             };
 
-        (source_types, target_types, target_slot, source_terastallized, source_pre_tera_types)
+        (source_types, target_types, target_slot, source_terastallized, source_pre_tera_types, source_stellar_boosted_types, source_species_name)
     };
 
     // if (type !== "???") {
@@ -274,34 +276,64 @@ pub fn modify_damage(
             stab = 1.5;
         }
 
-        // JavaScript: else { if (pokemon.terastallized === type && pokemon.getTypes(false, true).includes(type)) { stab = 2; } }
-        // Tera STAB x2: tera type matches move type AND was a pre-tera type → 2x instead of 1.5x
-        // Stellar case handled in Étape D (rare in Random Battle)
-        if let Some(ref tera_type) = source_terastallized {
-            if tera_type != "Stellar"
-                && tera_type == &move_type
-                && source_pre_tera_types.contains(&move_type)
-            {
+        // JavaScript STAB/Stellar block:
+        // if (pokemon.terastallized === 'Stellar') {
+        //   if (!pokemon.stellarBoostedTypes.includes(type) || move.stellarBoosted) {
+        //     stab = isSTAB ? 2 : [4915, 4096]; // 4915/4096 ≈ 1.2x
+        //     move.stellarBoosted = true;
+        //     if (pokemon.species.name !== 'Terapagos-Stellar') { pokemon.stellarBoostedTypes.push(type); }
+        //   }
+        // } else {
+        //   if (pokemon.terastallized === type && pokemon.getTypes(false, true).includes(type)) { stab = 2; }
+        //   stab = runEvent("ModifySTAB", ...);
+        // }
+        let mut apply_stellar_boost = false;
+        let is_stellar = source_terastallized.as_deref() == Some("Stellar");
+        if is_stellar {
+            // JS: if (!pokemon.stellarBoostedTypes.includes(type) || move.stellarBoosted)
+            let already_boosted = source_stellar_boosted_types.contains(&move_type);
+            if !already_boosted || active_move.stellar_boosted {
+                // JS: stab = isSTAB ? 2 : [4915, 4096]  (4915/4096 ≈ 1.2x)
+                stab = if has_stab { 2.0 } else { 4915.0 / 4096.0 };
+                apply_stellar_boost = true;
+            }
+            // already_boosted && !stellar_boosted: stab stays at 1.5 or 1.0
+        } else if let Some(ref tera_type) = source_terastallized {
+            // Non-Stellar tera: x2 STAB if tera type matches move type and native pre-tera type
+            if tera_type == &move_type && source_pre_tera_types.contains(&move_type) {
                 stab = 2.0;
             }
         }
 
-        // JavaScript: stab = this.battle.runEvent("ModifySTAB", pokemon, target, move, stab);
-        let stab_result = battle.run_event(
-            "ModifySTAB",
-            Some(crate::event::EventTarget::Pokemon(pokemon_pos)),  // pokemon = attacker
-            Some(target_pos),                                        // target = defender
-            Some(&move_effect),
-            EventResult::Float(stab),
-            false,
-            false
-        );
-        match stab_result {
-            EventResult::Float(modified_stab) => {
+        // JavaScript: stab = this.battle.runEvent("ModifySTAB", ...); — only in non-Stellar branch
+        if !is_stellar {
+            let stab_result = battle.run_event(
+                "ModifySTAB",
+                Some(crate::event::EventTarget::Pokemon(pokemon_pos)),
+                Some(target_pos),
+                Some(&move_effect),
+                EventResult::Float(stab),
+                false,
+                false
+            );
+            if let EventResult::Float(modified_stab) = stab_result {
                 stab = modified_stab;
             }
-            _ => {
-                // No modification
+        }
+
+        // Apply Stellar boost mutations AFTER stab is finalized (two-phase borrow pattern)
+        // JS: move.stellarBoosted = true; pokemon.stellarBoostedTypes.push(type);
+        if apply_stellar_boost {
+            if let Some(ref shared_move) = battle.active_move {
+                shared_move.borrow_mut().stellar_boosted = true;
+            }
+            // Terapagos-Stellar never adds to stellarBoostedTypes (always gets the boost)
+            if source_species_name.as_str() != "terapagosstellar" {
+                if let Some(pokemon) = battle.pokemon_at_mut(pokemon_pos.0, pokemon_pos.1) {
+                    if !pokemon.stellar_boosted_types.contains(&move_type) {
+                        pokemon.stellar_boosted_types.push(move_type.clone());
+                    }
+                }
             }
         }
 
